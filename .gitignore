@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+
+# Environment
+.env
+!.env.example
+
+# Build output
+dist/
+
+# Bun lockfile (keep bun.lockb when generated)
+# bun.lockb
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Test coverage
+coverage/
+
+# Local agent and planning scaffolding
+/.codex/
+/.cursor/
+/.specify/*
+!/.specify/memory/
+!/.specify/memory/constitution.md
+/references/
+
+# Keep only the public project documentation tracked.
+/docs/*
+!/docs/architecture.md
+!/docs/architecture-decisions.md
+!/docs/overview.md
+!/docs/domain-model.md

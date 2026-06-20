@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/types.ts","./src/components/gamescene.tsx","./src/hooks/use-game.ts","./src/services/api.ts","./src/services/auth.test.ts","./src/services/auth.ts","./src/stores/game-store.ts"],"version":"5.9.3"}

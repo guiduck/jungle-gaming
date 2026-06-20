@@ -1,0 +1,21 @@
+{
+  "frameWidth": 96,
+  "frameHeight": 96,
+  "animations": {
+    "run": {
+      "file": "/assets/goat/run.png",
+      "frames": 11,
+      "durationMs": 650
+    },
+    "jump": {
+      "file": "/assets/goat/jump.png",
+      "frames": 8,
+      "durationMs": 700
+    },
+    "idle": {
+      "file": "/assets/goat/idle.png",
+      "frames": 15,
+      "durationMs": 1200
+    }
+  }
+}
