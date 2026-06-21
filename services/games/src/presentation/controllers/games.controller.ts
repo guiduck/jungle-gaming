@@ -21,27 +21,27 @@ export class GamesController {
 
   @Get("rounds/current")
   @ApiOperation({ summary: "Get the current round snapshot" })
-  currentRound(): unknown {
+  currentRound(): Promise<unknown> {
     return this.gameState.getCurrentRound();
   }
 
   @Get("rounds/history")
   @ApiOperation({ summary: "Get recent completed rounds" })
-  history(): unknown {
-    return { items: this.gameState.getRoundHistory() };
+  async history(): Promise<unknown> {
+    return { items: await this.gameState.getRoundHistory() };
   }
 
   @Get("rounds/:roundId/verify")
   @ApiOperation({ summary: "Get provably fair verification data for a completed round" })
-  verify(@Param("roundId") roundId: string): unknown {
+  verify(@Param("roundId") roundId: string): Promise<unknown> {
     return this.run(() => this.gameState.getVerification(roundId));
   }
 
   @Get("bets/me")
   @UseGuards(KeycloakJwtGuard)
   @ApiOperation({ summary: "Get the current player's round snapshots with bets" })
-  myBets(@Req() request: PlayerRequest): unknown {
-    return { items: this.gameState.getPlayerBets(this.playerId(request)) };
+  async myBets(@Req() request: PlayerRequest): Promise<unknown> {
+    return { items: await this.gameState.getPlayerBets(this.playerId(request)) };
   }
 
   @Post("bet")
@@ -61,14 +61,14 @@ export class GamesController {
   cashout(
     @Req() request: PlayerRequest,
     @Body() body: CashoutRequestDto,
-  ): unknown {
+  ): Promise<unknown> {
     this.assertInteger(body.multiplierBps, "multiplierBps");
     return this.run(() => this.gameState.cashOut(this.playerId(request), body.multiplierBps));
   }
 
   @Post("rounds/current/start")
   @ApiOperation({ summary: "Development helper: start the current round" })
-  start(): unknown {
+  start(): Promise<unknown> {
     return this.run(() => this.gameState.startRound());
   }
 
@@ -80,7 +80,7 @@ export class GamesController {
 
   @Post("rounds/current/settle")
   @ApiOperation({ summary: "Development helper: settle and create the next round" })
-  settle(): unknown {
+  settle(): Promise<unknown> {
     return this.run(() => this.gameState.settleAndCreateNextRound());
   }
 

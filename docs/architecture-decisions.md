@@ -215,3 +215,82 @@ Consequencias:
 - A proxima etapa recomendada continua sendo persistencia, auth e e2e.
 - A spec de polish deve definir a formula visual, o mapeamento multiplicador->coordenadas e a
   rotacao da cabra pela inclinacao da curva.
+
+## ADR-009: Usar Migrations Automaticas no Docker Compose
+
+Status: Aceita.
+
+Decisao:
+
+Rodar `games-migrations` e `wallets-migrations` como servicos one-shot antes de iniciar os servicos
+Games e Wallets.
+
+Consequencias:
+
+- Um checkout novo aplica as migrations automaticamente com `docker compose up -d`.
+- `bun run migration:up` continua disponivel manualmente dentro de cada servico para aprendizado,
+  debug e manutencao.
+- Os configs MikroORM declaram explicitamente `PostgreSqlDriver` para funcionar tanto na CLI quanto
+  no `MikroOrmModule`.
+
+## ADR-010: RabbitMQ como Transporte Padrao de Efeitos de Wallet
+
+Status: Aceita com hardening pendente.
+
+Decisao:
+
+Usar RabbitMQ por padrao para `wallet.bet_debit_requested` e `wallet.payout_credit_requested`.
+Adapters HTTP interno e imediato ficam restritos a modos explicitos de dev/smoke.
+
+Consequencias:
+
+- Bet so e aceita apos resultado aceito da Wallet.
+- Timeout de confirmacao continua sendo erro retentavel e nao cria bet aceita.
+- Bindings RabbitMQ devem usar padroes de topic corretos; requests usam `wallet.#`.
+- Ainda falta cobertura e2e automatizada para timeout/retry, duplicidade de mensagens e payout.
+
+## ADR-011: Reconciliar Rounds Interrompidos Sem Descartar Participacao
+
+Status: Aceita.
+
+Decisao:
+
+Ao reiniciar, o Game Service carrega rounds ativos do PostgreSQL. Rounds `running` sao crashados
+para um resultado terminal explicavel, bets aceitas sao preservadas, payouts de bets sacadas sao
+reenviados com idempotencia, e rounds `crashed` sao liquidados.
+
+Consequencias:
+
+- Participacao de jogadores nao e descartada durante restart.
+- A cobertura e2e garante que dados antigos ou corridas de lifecycle nao deixem mais de uma rodada
+  ativa jogavel.
+
+## ADR-012: Demo Deterministico e Logs Concisos para Avaliacao Local
+
+Status: Aceita.
+
+Decisao:
+
+Adicionar comandos raiz `npm run demo:up` e `npm run smoke:api` para avaliacao local. O comando de
+demo habilita `DEMO_DETERMINISTIC_ROUNDS=true` somente no fluxo de demo, permitindo um smoke
+repetivel sem alterar as regras publicas do jogo. Tambem adicionar logs concisos, de linha unica,
+para ciclo de rodada, efeitos de Wallet, RabbitMQ e auth usando o logger existente do NestJS. No
+frontend, adicionar telemetria equivalente no console do navegador com funcoes puras de formatacao
+e um emissor pequeno para eventos de auth, API, WebSocket e acoes de gameplay.
+
+Contexto:
+
+A entrega local ja passa pelos criterios eliminatorios, mas avaliadores precisam de comandos claros
+e sinais operacionais rapidos. A alternativa seria exigir passos manuais e esperar uma rodada com
+crash favoravel, o que reduz confianca e reprodutibilidade.
+
+Consequencias:
+
+- `bun run docker:up` continua sendo o caminho normal e deixa o modo deterministico desligado.
+- `npm run demo:up` e explicitamente um fluxo local de avaliacao e imprime URLs, credenciais e
+  proximos comandos.
+- A seed/nonce deterministica preserva SHA-256/HMAC-SHA256 e a verificacao posterior; nao ha novo
+  endpoint publico para escolher crash point.
+- Os logs ajudam debugging local sem Prometheus, Grafana, OpenTelemetry ou agregacao externa.
+- Segredos, tokens, refresh tokens, authorization codes, PKCE verifiers e seeds ainda nao reveladas
+  nao devem aparecer em logs.

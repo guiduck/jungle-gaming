@@ -1,18 +1,32 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from "@nestjs/common";
+import { CanActivate, ExecutionContext, Injectable, Logger, UnauthorizedException } from "@nestjs/common";
 import { decodeJwt } from "jose";
 import type { PlayerRequest } from "./player-request";
+import { formatLogEvent } from "../../infrastructure/system/log-event";
 
 @Injectable()
 export class KeycloakJwtGuard implements CanActivate {
+  private readonly logger = new Logger(KeycloakJwtGuard.name);
+
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<PlayerRequest>();
-    const playerId = this.playerFromBearer(request) ?? this.headerValue(request, "x-player-id");
+    const authMode = process.env.AUTH_MODE ?? "keycloak";
+    const playerId = this.playerFromBearer(request) ??
+      (authMode === "dev" ? this.headerValue(request, "x-player-id") : undefined);
 
     if (!playerId) {
-      throw new UnauthorizedException("Authenticated player is required");
+      this.logger.warn(formatLogEvent("auth.rejected", {
+        authMode,
+        reason: authMode === "dev" ? "missing_player" : "missing_bearer",
+      }));
+      throw new UnauthorizedException(
+        authMode === "dev"
+          ? "Authenticated player is required"
+          : "Keycloak bearer token is required",
+      );
     }
 
     request.playerId = playerId;
+    this.logger.log(formatLogEvent("auth.accepted", { authMode, playerId }));
     return true;
   }
 

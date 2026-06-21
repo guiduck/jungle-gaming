@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "bun run --watch src/main.ts",
     "start": "bun run src/main.ts",
+    "migration:up": "mikro-orm migration:up --config src/infrastructure/persistence/mikro-orm/mikro-orm.config.ts",
     "test": "bun test tests/unit",
     "test:e2e": "bun test tests/e2e"
   },
@@ -23,8 +24,10 @@
     "rxjs": "^7.8.2"
   },
   "devDependencies": {
+    "@mikro-orm/cli": "^6.4.16",
     "@types/amqplib": "^0.10.7",
     "bun-types": "latest",
+    "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   }
 }

@@ -1,14 +1,16 @@
 import * as amqp from "amqplib";
-import { Injectable, OnModuleDestroy } from "@nestjs/common";
+import { Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
 import type {
   WalletOperationRecord,
   WalletResultPublisher,
 } from "../../application/ports/wallet-ports";
+import { formatLogEvent } from "../system/log-event";
 
 const RESULT_EXCHANGE = "wallet.results";
 
 @Injectable()
 export class RabbitMqWalletResultPublisher implements WalletResultPublisher, OnModuleDestroy {
+  private readonly logger = new Logger(RabbitMqWalletResultPublisher.name);
   private connection?: Awaited<ReturnType<typeof amqp.connect>>;
   private channel?: amqp.Channel;
 
@@ -17,11 +19,7 @@ export class RabbitMqWalletResultPublisher implements WalletResultPublisher, OnM
     await this.connection?.close().catch(() => undefined);
   }
 
-  publish(operation: WalletOperationRecord): void {
-    void this.publishAsync(operation);
-  }
-
-  private async publishAsync(operation: WalletOperationRecord): Promise<void> {
+  async publish(operation: WalletOperationRecord): Promise<void> {
     if (process.env.RABBITMQ_PUBLISHERS_ENABLED !== "true") {
       return;
     }
@@ -29,6 +27,15 @@ export class RabbitMqWalletResultPublisher implements WalletResultPublisher, OnM
     const eventName = this.eventName(operation);
     const channel = await this.getChannel();
     await channel.assertExchange(RESULT_EXCHANGE, "topic", { durable: true });
+    this.logger.log(formatLogEvent("rabbitmq.publish", {
+      routingKey: eventName,
+      direction: "publish",
+      idempotencyKey: operation.idempotencyKey,
+      playerId: operation.playerId,
+      amountCents: operation.amountCents,
+      result: operation.status,
+      reason: operation.reason,
+    }));
     channel.publish(
       RESULT_EXCHANGE,
       eventName,

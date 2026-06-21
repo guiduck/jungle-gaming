@@ -1,6 +1,8 @@
 import { createHash, createHmac } from "crypto";
 import { CrashPoint } from "../value-objects/crash-point";
 
+const DEFAULT_HOUSE_EDGE_BPS = 100;
+
 export interface ProvablyFairRound {
   serverSeed: string;
   serverSeedHash: string;
@@ -17,7 +19,7 @@ export class ProvablyFair {
   static createRound(
     serverSeed: string,
     nonce: string,
-    houseEdgeBps = 100,
+    houseEdgeBps = DEFAULT_HOUSE_EDGE_BPS,
   ): ProvablyFairRound {
     return {
       serverSeed,
@@ -31,7 +33,7 @@ export class ProvablyFair {
   static calculateCrashPoint(
     serverSeed: string,
     nonce: string,
-    houseEdgeBps = 100,
+    houseEdgeBps = DEFAULT_HOUSE_EDGE_BPS,
   ): CrashPoint {
     const digest = createHmac("sha256", serverSeed).update(nonce).digest("hex");
     const sample = Number.parseInt(digest.slice(0, 13), 16);
@@ -46,7 +48,7 @@ export class ProvablyFair {
     expectedHash: string,
     nonce: string,
     expectedCrashPointBps: number,
-    houseEdgeBps = 100,
+    houseEdgeBps = DEFAULT_HOUSE_EDGE_BPS,
   ): boolean {
     return (
       ProvablyFair.hashSeed(serverSeed) === expectedHash &&

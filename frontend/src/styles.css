@@ -95,6 +95,27 @@ main {
   font-size: 1.4rem;
 }
 
+.wallet small {
+  color: #46f19c;
+  font-weight: 700;
+}
+
+.auth-screen {
+  display: grid;
+  place-items: center;
+}
+
+.auth-panel {
+  width: min(420px, 100%);
+  display: grid;
+  gap: 14px;
+}
+
+.auth-panel h1,
+.auth-panel p {
+  margin: 0;
+}
+
 .layout {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.7fr);

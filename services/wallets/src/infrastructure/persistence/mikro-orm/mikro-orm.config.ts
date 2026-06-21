@@ -1,7 +1,8 @@
-import { Options } from "@mikro-orm/postgresql";
+import { defineConfig, PostgreSqlDriver } from "@mikro-orm/postgresql";
 import { walletOperationSchema, walletSchema } from "./schema";
 
-const config: Options = {
+const config = defineConfig({
+  driver: PostgreSqlDriver,
   entities: [walletSchema, walletOperationSchema],
   dbName: process.env.WALLETS_DB_NAME ?? "wallets",
   host: process.env.POSTGRES_HOST ?? "postgres",
@@ -12,6 +13,6 @@ const config: Options = {
     path: "dist/infrastructure/persistence/mikro-orm/migrations",
     pathTs: "src/infrastructure/persistence/mikro-orm/migrations",
   },
-};
+});
 
 export default config;

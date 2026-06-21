@@ -7,6 +7,8 @@
     "frontend"
   ],
   "scripts": {
+    "demo:up": "node scripts/demo-up.cjs",
+    "smoke:api": "node scripts/smoke-api.cjs",
     "docker:up": "docker compose up",
     "docker:down": "docker compose down",
     "docker:prune": "docker compose down -v --rmi all --remove-orphans && docker volume prune -f"

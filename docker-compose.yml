@@ -54,7 +54,7 @@ services:
     volumes:
       - ./docker/keycloak:/opt/keycloak/data/import:ro
     healthcheck:
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && echo -e 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && cat <&3 | grep -q '200'"]
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && cat <&3 | grep -q '200'"]
       interval: 10s
       timeout: 5s
       retries: 15
@@ -91,6 +91,31 @@ services:
         condition: service_healthy
 
   # ---------------------------------------------------------------------------
+  # Database migrations
+  # ---------------------------------------------------------------------------
+  games-migrations:
+    build:
+      context: ./services/games
+      dockerfile: Dockerfile
+    env_file:
+      - ./services/games/.env.example
+    command: ["bun", "run", "migration:up"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  wallets-migrations:
+    build:
+      context: ./services/wallets
+      dockerfile: Dockerfile
+    env_file:
+      - ./services/wallets/.env.example
+    command: ["bun", "run", "migration:up"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------------------
   # Games Service
   # ---------------------------------------------------------------------------
   games:
@@ -101,13 +126,17 @@ services:
       - "4001:4001"
     env_file:
       - ./services/games/.env.example
+    environment:
+      DEMO_DETERMINISTIC_ROUNDS: ${DEMO_DETERMINISTIC_ROUNDS:-false}
+      DEMO_ROUND_SERVER_SEED: ${DEMO_ROUND_SERVER_SEED:-jungle-smoke-seed-2026}
+      DEMO_ROUND_NONCE: ${DEMO_ROUND_NONCE:-smoke-round}
     depends_on:
-      postgres:
-        condition: service_healthy
+      games-migrations:
+        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:4001/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:4001/health >/dev/null || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -125,12 +154,12 @@ services:
     env_file:
       - ./services/wallets/.env.example
     depends_on:
-      postgres:
-        condition: service_healthy
+      wallets-migrations:
+        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:4002/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:4002/health >/dev/null || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -147,6 +176,10 @@ services:
       - "3000:3000"
     environment:
       VITE_API_URL: http://localhost:8000
+      VITE_AUTH_MODE: keycloak
+      VITE_KEYCLOAK_URL: http://localhost:8080
+      VITE_KEYCLOAK_REALM: crash-game
+      VITE_KEYCLOAK_CLIENT_ID: crash-game-client
     depends_on:
       kong:
         condition: service_healthy

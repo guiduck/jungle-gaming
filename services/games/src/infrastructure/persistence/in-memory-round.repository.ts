@@ -4,6 +4,10 @@ import type {
   RoundRepository,
 } from "../../application/ports/game-ports";
 import {
+  nonceForRound,
+  serverSeedForRound,
+} from "../../application/round-seed";
+import {
   CrashPoint,
   ProvablyFair,
   Round,
@@ -21,33 +25,37 @@ export class InMemoryRoundRepository implements RoundRepository {
     this.currentRound = this.createRound();
   }
 
-  getCurrent(): Round {
+  async getCurrent(): Promise<Round> {
     return this.currentRound;
   }
 
-  saveCurrent(round: Round): void {
+  async getActive(): Promise<Round[]> {
+    return this.currentRound.status === "settled" ? [] : [this.currentRound];
+  }
+
+  async saveCurrent(round: Round): Promise<void> {
     this.currentRound = round;
   }
 
-  createNext(): Round {
+  async createNext(): Promise<Round> {
     this.historicalSnapshots.push(this.currentRound.toSnapshot());
     this.currentRound = this.createRound();
     return this.currentRound;
   }
 
-  addCompleted(round: CompletedRoundRecord): void {
+  async addCompleted(round: CompletedRoundRecord): Promise<void> {
     this.completedRounds.push(round);
   }
 
-  getHistory(limit: number): CompletedRoundRecord[] {
+  async getHistory(limit: number): Promise<CompletedRoundRecord[]> {
     return this.completedRounds.slice(-limit).reverse();
   }
 
-  getCompleted(roundId: string): CompletedRoundRecord | undefined {
+  async getCompleted(roundId: string): Promise<CompletedRoundRecord | undefined> {
     return this.completedRounds.find((round) => round.id === roundId);
   }
 
-  getPlayerRoundSnapshots(playerId: string, limit: number): RoundSnapshot[] {
+  async getPlayerRoundSnapshots(playerId: string, limit: number): Promise<RoundSnapshot[]> {
     const snapshots = [...this.historicalSnapshots, this.currentRound.toSnapshot()];
     return snapshots
       .filter((round) => round.bets.some((bet) => bet.playerId === playerId))
@@ -57,12 +65,12 @@ export class InMemoryRoundRepository implements RoundRepository {
 
   private createRound(): Round {
     const id = `round-${this.roundSequence++}`;
-    const fairness = ProvablyFair.createRound(`server-seed-${id}`, id);
+    const fairness = ProvablyFair.createRound(serverSeedForRound(id), nonceForRound(id));
     return new Round(
       id,
       CrashPoint.fromBasisPoints(fairness.crashPoint.multiplierBps),
       fairness.serverSeedHash,
-      id,
+      fairness.nonce,
     );
   }
 }

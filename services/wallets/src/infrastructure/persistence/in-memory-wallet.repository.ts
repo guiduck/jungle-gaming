@@ -6,11 +6,11 @@ import { Wallet } from "../../domain";
 export class InMemoryWalletRepository implements WalletRepository {
   private readonly wallets = new Map<string, Wallet>();
 
-  findByPlayerId(playerId: string): Wallet | undefined {
+  async findByPlayerId(playerId: string): Promise<Wallet | undefined> {
     return this.wallets.get(playerId);
   }
 
-  save(wallet: Wallet): void {
+  async save(wallet: Wallet): Promise<void> {
     this.wallets.set(wallet.playerId.value, wallet);
   }
 }

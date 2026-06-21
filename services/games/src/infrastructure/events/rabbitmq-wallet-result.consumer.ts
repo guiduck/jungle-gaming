@@ -1,20 +1,26 @@
 import * as amqp from "amqplib";
-import { Injectable, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
+import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { GameStateService } from "../../application/game-state.service";
-import type { WalletEffectResult } from "../../application/ports/game-ports";
-import { InMemoryGameMessageReceiptRepository } from "./in-memory-game-message-receipt.repository";
+import {
+  GAME_MESSAGE_RECEIPT_REPOSITORY,
+  type GameMessageReceiptRepository,
+  type WalletEffectResult,
+} from "../../application/ports/game-ports";
+import { formatLogEvent } from "../system/log-event";
 
 const RESULT_EXCHANGE = "wallet.results";
 const RESULT_QUEUE = "wallet.results.games";
 
 @Injectable()
 export class RabbitMqWalletResultConsumer implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(RabbitMqWalletResultConsumer.name);
   private connection?: Awaited<ReturnType<typeof amqp.connect>>;
   private channel?: amqp.Channel;
 
   constructor(
     private readonly gameState: GameStateService,
-    private readonly receipts: InMemoryGameMessageReceiptRepository,
+    @Inject(GAME_MESSAGE_RECEIPT_REPOSITORY)
+    private readonly receipts: GameMessageReceiptRepository,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -33,15 +39,42 @@ export class RabbitMqWalletResultConsumer implements OnModuleInit, OnModuleDestr
 
       try {
         const result = JSON.parse(message.content.toString()) as WalletEffectResult;
-        if (!this.receipts.has(result.idempotencyKey)) {
-          this.receipts.record(result.idempotencyKey);
-          this.gameState.handleWalletResult(result);
-        }
-        channel.ack(message);
-      } catch {
+        void this.handleResult(result)
+          .then(() => channel.ack(message))
+          .catch((error) => {
+            this.logger.error(formatLogEvent("rabbitmq.consume.failed", {
+              routingKey: message.fields.routingKey,
+              direction: "consume",
+              reason: error instanceof Error ? error.message : String(error),
+            }));
+            channel.nack(message, false, false);
+          });
+      } catch (error) {
+        this.logger.error(formatLogEvent("rabbitmq.consume.parse_failed", {
+          routingKey: message.fields.routingKey,
+          direction: "consume",
+          reason: error instanceof Error ? error.message : String(error),
+        }));
         channel.nack(message, false, false);
       }
     });
+  }
+
+  private async handleResult(result: WalletEffectResult): Promise<void> {
+    if (!(await this.receipts.has(result.idempotencyKey))) {
+      await this.receipts.record(result.idempotencyKey, "wallet.result");
+      this.logger.log(formatLogEvent("wallet.result.consumed", {
+        idempotencyKey: result.idempotencyKey,
+        result: result.status,
+        reason: result.reason,
+      }));
+      this.gameState.handleWalletResult(result);
+      return;
+    }
+    this.logger.log(formatLogEvent("wallet.result.duplicate", {
+      idempotencyKey: result.idempotencyKey,
+      result: result.status,
+    }));
   }
 
   async onModuleDestroy(): Promise<void> {

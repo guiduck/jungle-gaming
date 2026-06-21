@@ -76,12 +76,20 @@ E dono do saldo do jogador, das operacoes monetarias e da integridade da liquida
   payout, sempre com chaves de idempotencia.
 - A liquidacao usa um fluxo simples de eventos com handlers idempotentes, nao um framework de saga
   generalizado.
-- O runtime local atual usa um adaptador HTTP interno de Game para Wallet para permitir smoke de
-  saldo antes do hardening completo do caminho RabbitMQ.
+- O runtime Docker/local agora usa RabbitMQ por padrao para efeitos de Wallet. O adaptador HTTP
+  interno permanece como modo explicito de desenvolvimento/smoke.
+- Wallet persiste saldo e ledger em PostgreSQL. `seed_credit`, `debit_bet` e `credit_payout`
+  continuam idempotentes por chave; saldo negativo e bloqueado no dominio e por constraint SQL.
+- Game persiste rodadas, bets, historico e metadados provably fair. Rehydration normaliza valores
+  opcionais nulos do banco antes de recriar entidades de dominio.
+- Restart reconciliation preserva bets aceitas; rodadas `running` interrompidas sao crashadas para
+  um resultado terminal explicavel e rodadas `crashed` sao liquidadas com payout idempotente.
 
 ## Perguntas em Aberto
 
 - Auto cashout deve entrar apenas depois que os criterios eliminatorios estiverem completos.
+- A reconciliacao deve ser fortalecida para provar que nao ficam multiplas rodadas ativas jogaveis
+  apos restart ou apos dados antigos de smoke.
 - A curva visual final da montanha deve ser especificada em uma proxima etapa de polish, usando a
   formula do multiplicador para desenhar a trilha e inclinar a cabra de acordo com a derivada da
   curva.

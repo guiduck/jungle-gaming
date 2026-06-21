@@ -1,7 +1,17 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { GameScene } from "./components/GameScene";
 import { useGame } from "./hooks/use-game";
-import { getPlayerId, setAccessToken, setPlayerId } from "./services/auth";
+import {
+  beginKeycloakLogin,
+  completeKeycloakLoginFromCallback,
+  getAccessToken,
+  getAuthMode,
+  getCurrentPlayerId,
+  getPlayerId,
+  isDevAuthMode,
+  setAccessToken,
+  setPlayerId,
+} from "./services/auth";
 import { useGameStore } from "./stores/game-store";
 
 function cents(value: number): string {
@@ -13,6 +23,51 @@ function multiplier(value: number): string {
 }
 
 export function App() {
+  const authMode = getAuthMode();
+  const [isCompletingLogin, setIsCompletingLogin] = useState(authMode === "keycloak");
+  const [hasToken, setHasToken] = useState(Boolean(getAccessToken()));
+
+  useEffect(() => {
+    if (authMode !== "keycloak") {
+      setIsCompletingLogin(false);
+      return;
+    }
+
+    void completeKeycloakLoginFromCallback()
+      .then((completed) => {
+        setHasToken(Boolean(getAccessToken()) || completed);
+      })
+      .finally(() => setIsCompletingLogin(false));
+  }, [authMode]);
+
+  if (authMode === "keycloak" && isCompletingLogin) {
+    return (
+      <main className="auth-screen">
+        <section className="panel auth-panel">
+          <h1>Jungle Crash</h1>
+          <p>Completing Keycloak login...</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (authMode === "keycloak" && !hasToken) {
+    return (
+      <main className="auth-screen">
+        <section className="panel auth-panel">
+          <p>Jungle Crash</p>
+          <h1>Mountain Run</h1>
+          <button onClick={() => void beginKeycloakLogin()}>Login with Keycloak</button>
+        </section>
+      </main>
+    );
+  }
+
+  return <AuthenticatedGame />;
+}
+
+function AuthenticatedGame() {
+  const isDevMode = isDevAuthMode();
   const [amountCents, setAmountCents] = useState(100);
   const [playerInput, setPlayerInput] = useState(getPlayerId());
   const [tokenInput, setTokenInput] = useState("");
@@ -32,7 +87,7 @@ export function App() {
   const cashoutState = useGameStore((state) => state.cashoutState);
   const socketStatus = useGameStore((state) => state.socketStatus);
   const displayedMultiplierBps = useGameStore((state) => state.displayedMultiplierBps);
-  const playerId = getPlayerId();
+  const playerId = getCurrentPlayerId();
   const myBet = useMemo(
     () => round?.bets.find((bet) => bet.playerId === playerId),
     [playerId, round],
@@ -51,8 +106,9 @@ export function App() {
           <h1>Mountain Run</h1>
         </div>
         <div className="wallet">
-          <span>{playerId} · {socketStatus}</span>
+          <span>{isDevMode ? playerId : "Keycloak"} / {socketStatus}</span>
           <strong>{walletQuery.data ? cents(walletQuery.data.balanceCents) : "..."}</strong>
+          <small>{isDevMode ? "Dev identity" : "Keycloak identity"}</small>
         </div>
       </header>
 
@@ -61,31 +117,33 @@ export function App() {
 
         <section className="panel controls">
           <h2>Bet</h2>
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              setPlayerId(playerInput);
-              setAccessToken(tokenInput);
-              window.location.reload();
-            }}
-          >
-            <label>
-              Player / JWT subject
-              <input
-                value={playerInput}
-                onChange={(event) => setPlayerInput(event.target.value)}
-              />
-            </label>
-            <label>
-              Bearer token
-              <input
-                value={tokenInput}
-                onChange={(event) => setTokenInput(event.target.value)}
-                placeholder="Optional Keycloak access token"
-              />
-            </label>
-            <button>Use identity</button>
-          </form>
+          {isDevMode ? (
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                setPlayerId(playerInput);
+                setAccessToken(tokenInput);
+                window.location.reload();
+              }}
+            >
+              <label>
+                Player / JWT subject
+                <input
+                  value={playerInput}
+                  onChange={(event) => setPlayerInput(event.target.value)}
+                />
+              </label>
+              <label>
+                Bearer token
+                <input
+                  value={tokenInput}
+                  onChange={(event) => setTokenInput(event.target.value)}
+                  placeholder="Optional access token"
+                />
+              </label>
+              <button>Use dev identity</button>
+            </form>
+          ) : null}
           <form onSubmit={onBet}>
             <label>
               Amount
@@ -110,17 +168,19 @@ export function App() {
             Cash out {myBet ? cents(Math.floor((myBet.amountCents * displayedMultiplierBps) / 10000)) : ""}
           </button>
           <p className={`status ${cashoutState}`}>Cashout: {cashoutState}</p>
-          <div className="dev-controls">
-            <button onClick={() => startMutation.mutate()} disabled={round?.status !== "betting"}>
-              Start
-            </button>
-            <button onClick={() => crashMutation.mutate()} disabled={round?.status !== "running"}>
-              Crash
-            </button>
-            <button onClick={() => settleMutation.mutate()} disabled={round?.status !== "crashed"}>
-              Next
-            </button>
-          </div>
+          {isDevMode ? (
+            <div className="dev-controls">
+              <button onClick={() => startMutation.mutate()} disabled={round?.status !== "betting"}>
+                Start
+              </button>
+              <button onClick={() => crashMutation.mutate()} disabled={round?.status !== "running"}>
+                Crash
+              </button>
+              <button onClick={() => settleMutation.mutate()} disabled={round?.status !== "crashed"}>
+                Next
+              </button>
+            </div>
+          ) : null}
         </section>
 
         <section className="panel">

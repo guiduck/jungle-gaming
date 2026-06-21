@@ -15,7 +15,11 @@ import {
   settleRound,
   startRound,
 } from "../services/api";
+import { logFrontendEvent } from "../services/telemetry";
 import { useGameStore } from "../stores/game-store";
+
+const logGameEvent = (event: string, fields: Record<string, string | number | boolean | undefined> = {}) =>
+  logFrontendEvent(event, fields);
 
 export function useGame() {
   const queryClient = useQueryClient();
@@ -67,12 +71,14 @@ export function useGame() {
   }, [roundQuery.data, setRound]);
 
   const refresh = async () => {
+    logGameEvent("game.refresh.started");
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["round"] }),
       queryClient.invalidateQueries({ queryKey: ["wallet"] }),
       queryClient.invalidateQueries({ queryKey: ["round-history"] }),
       queryClient.invalidateQueries({ queryKey: ["my-bets"] }),
     ]);
+    logGameEvent("game.refresh.completed");
   };
 
   useEffect(() => {
@@ -89,26 +95,53 @@ export function useGame() {
 
     socket.on("connect", () => {
       setSocketStatus("connected");
+      logGameEvent("socket.connected");
       refreshFromEvent();
     });
-    socket.on("disconnect", () => setSocketStatus("disconnected"));
-    socket.on("connect_error", () => setSocketStatus("disconnected"));
+    socket.on("disconnect", (reason) => {
+      setSocketStatus("disconnected");
+      logFrontendEvent("socket.disconnected", { reason }, "warn");
+    });
+    socket.on("connect_error", (error) => {
+      setSocketStatus("disconnected");
+      logFrontendEvent("socket.connect_error", { reason: error.message }, "warn");
+    });
     socket.on("round.multiplier", (payload: { multiplierBps?: number }) => {
       if (typeof payload.multiplierBps === "number") {
         setDisplayedMultiplierBps(payload.multiplierBps);
       }
     });
-    socket.on("round.betting_opened", refreshFromEvent);
-    socket.on("round.started", refreshFromEvent);
-    socket.on("round.crashed", refreshFromEvent);
-    socket.on("round.settled", refreshFromEvent);
-    socket.on("history.updated", refreshFromEvent);
-    socket.on("bet.accepted", refreshFromEvent);
+    socket.on("round.betting_opened", () => {
+      logGameEvent("socket.event.received", { socketEvent: "round.betting_opened" });
+      refreshFromEvent();
+    });
+    socket.on("round.started", () => {
+      logGameEvent("socket.event.received", { socketEvent: "round.started" });
+      refreshFromEvent();
+    });
+    socket.on("round.crashed", () => {
+      logGameEvent("socket.event.received", { socketEvent: "round.crashed" });
+      refreshFromEvent();
+    });
+    socket.on("round.settled", () => {
+      logGameEvent("socket.event.received", { socketEvent: "round.settled" });
+      refreshFromEvent();
+    });
+    socket.on("history.updated", () => {
+      logGameEvent("socket.event.received", { socketEvent: "history.updated" });
+      refreshFromEvent();
+    });
+    socket.on("bet.accepted", () => {
+      logGameEvent("socket.event.received", { socketEvent: "bet.accepted" });
+      refreshFromEvent();
+    });
     socket.on("cashout.accepted", () => {
+      logGameEvent("socket.event.received", { socketEvent: "cashout.accepted" });
       setCashoutState("accepted");
       refreshFromEvent();
     });
     socket.on("cashout.rejected", () => {
+      logFrontendEvent("socket.event.received", { socketEvent: "cashout.rejected" }, "warn");
       setCashoutState("rejected");
       refreshFromEvent();
     });
@@ -131,23 +164,59 @@ export function useGame() {
     verificationQuery,
     placeBetMutation: useMutation({
       mutationFn: placeBet,
+      onMutate: (amountCents) => {
+        logGameEvent("bet.submit.started", { amountCents });
+      },
       onSuccess: async (round) => {
+        logGameEvent("bet.submit.accepted", { roundId: round.id, status: round.status });
         setRound(round);
         await refresh();
+      },
+      onError: (error) => {
+        logFrontendEvent("bet.submit.rejected", {
+          reason: error instanceof Error ? error.message : String(error),
+        }, "warn");
       },
     }),
     cashoutMutation: useMutation({
       mutationFn: cashOut,
-      onMutate: () => setCashoutState("pending"),
+      onMutate: (multiplierBps) => {
+        logGameEvent("cashout.submit.started", { multiplierBps });
+        setCashoutState("pending");
+      },
       onSuccess: async (round) => {
+        logGameEvent("cashout.submit.accepted", { roundId: round.id, status: round.status });
         setRound(round);
         setCashoutState("accepted");
         await refresh();
       },
-      onError: () => setCashoutState("rejected"),
+      onError: (error) => {
+        logFrontendEvent("cashout.submit.rejected", {
+          reason: error instanceof Error ? error.message : String(error),
+        }, "warn");
+        setCashoutState("rejected");
+      },
     }),
-    startMutation: useMutation({ mutationFn: startRound, onSuccess: setRound }),
-    crashMutation: useMutation({ mutationFn: crashRound, onSuccess: setRound }),
-    settleMutation: useMutation({ mutationFn: settleRound, onSuccess: setRound }),
+    startMutation: useMutation({
+      mutationFn: startRound,
+      onSuccess: (round) => {
+        logGameEvent("round.manual_start.accepted", { roundId: round.id });
+        setRound(round);
+      },
+    }),
+    crashMutation: useMutation({
+      mutationFn: crashRound,
+      onSuccess: (round) => {
+        logGameEvent("round.manual_crash.accepted", { roundId: round.id });
+        setRound(round);
+      },
+    }),
+    settleMutation: useMutation({
+      mutationFn: settleRound,
+      onSuccess: (round) => {
+        logGameEvent("round.manual_settle.accepted", { roundId: round.id });
+        setRound(round);
+      },
+    }),
   };
 }

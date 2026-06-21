@@ -76,6 +76,49 @@ RabbitMQ, Keycloak, Kong, Game Service, Wallet Service e Frontend.
 A entrega local esperada e que o stack suba por Docker Compose a partir de arquivos versionados,
 incluindo import do realm do Keycloak, roteamento Kong e inicializacao dos servicos.
 
-Estado atual importante: o PostgreSQL sobe e os artefatos MikroORM existem, mas os providers ativos
-de Game e Wallet ainda usam repositorios em memoria. A persistencia PostgreSQL real e a proxima
-etapa de hardening.
+Estado atual importante: no perfil Docker/local, os providers ativos agora apontam para
+repositorios MikroORM/PostgreSQL por padrao. Os adapters em memoria continuam disponiveis somente
+por configuracao explicita de desenvolvimento.
+
+## Defaults de Runtime
+
+- `PERSISTENCE_ADAPTER=postgres` usa PostgreSQL/MikroORM para Game e Wallet.
+- `WALLET_EFFECT_ADAPTER=rabbitmq` usa RabbitMQ para debito de aposta e credito de payout.
+- `AUTH_MODE=keycloak` exige bearer token e deriva `PlayerId` do `sub`.
+- `AUTH_MODE=dev` permite `x-player-id` apenas como modo explicito de smoke.
+
+O Docker Compose executa `games-migrations` e `wallets-migrations` antes de iniciar os servicos.
+Esses jobs rodam `bun run migration:up` com o config MikroORM de cada servico e sao repetiveis.
+
+## Demo Local e Observabilidade
+
+O comando `npm run demo:up` e um wrapper operacional para avaliadores. Ele usa Docker Compose,
+confere migrations, aguarda health checks e imprime URLs/credenciais. Para manter o smoke
+deterministico sem mudar as regras publicas, esse wrapper inicia o Games com
+`DEMO_DETERMINISTIC_ROUNDS=true`; o caminho normal `bun run docker:up` permanece com
+`DEMO_DETERMINISTIC_ROUNDS=false`.
+
+Para jogar localmente como usuario, use o caminho normal `bun run docker:up`, abra
+`http://localhost:3000` e autentique pelo Keycloak com `player` / `player123`. Nesse modo a rodada
+nao fica presa a seed fixa de smoke: o Game Service usa o caminho regular de seed/nonce derivado do
+round, e o frontend apenas projeta estado autoritativo vindo do backend.
+
+Quando o modo demo deterministico esta ativo, a escolha de seed/nonce da proxima rodada usa valores
+locais de demo, mas a regra de crash continua sendo a mesma: compromisso SHA-256, derivacao
+HMAC-SHA256, multiplicador em basis points e verificacao posterior pelo endpoint de verify. O modo
+nao adiciona endpoint publico para controlar crash point nem para alterar saldo de carteira.
+
+Os servicos emitem logs concisos de ciclo de vida usando o logger do NestJS: modo de startup,
+transicoes de rodada, efeitos de Wallet, publish/consume RabbitMQ, rejeicoes de auth e resultados
+idempotentes. Esses logs sao sinais operacionais locais; nao ha infraestrutura de monitoramento
+pesada nesta fatia.
+
+O frontend tambem emite telemetria leve no console do navegador, usando funcoes puras para formatar
+eventos `key=value`. Os sinais cobrem inicio/conclusao/falha de chamadas API, fluxo Keycloak PKCE,
+conexao/desconexao WebSocket, eventos recebidos de rodada, refresh de estado, bet submit, cashout
+submit e comandos manuais de rodada. Tokens, authorization codes, PKCE verifier e secrets nao sao
+registrados.
+
+Nota de hardening: a reconciliacao de restart tem cobertura e2e para garantir que rodadas antigas
+`running/crashed` sejam terminalizadas sem descartar participacao visivel e que reste apenas um
+round ativo jogavel.

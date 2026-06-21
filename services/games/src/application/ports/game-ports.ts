@@ -5,6 +5,7 @@ export const GAME_EVENT_PUBLISHER = Symbol("GAME_EVENT_PUBLISHER");
 export const GAME_WALLET_GATEWAY = Symbol("GAME_WALLET_GATEWAY");
 export const GAME_CLOCK = Symbol("GAME_CLOCK");
 export const GAME_ID_GENERATOR = Symbol("GAME_ID_GENERATOR");
+export const GAME_MESSAGE_RECEIPT_REPOSITORY = Symbol("GAME_MESSAGE_RECEIPT_REPOSITORY");
 
 export interface VerificationFormulaMetadata {
   commitmentAlgorithm: "sha256";
@@ -24,13 +25,14 @@ export interface CompletedRoundRecord {
 }
 
 export interface RoundRepository {
-  getCurrent(): Round;
-  saveCurrent(round: Round): void;
-  createNext(): Round;
-  addCompleted(round: CompletedRoundRecord): void;
-  getHistory(limit: number): CompletedRoundRecord[];
-  getCompleted(roundId: string): CompletedRoundRecord | undefined;
-  getPlayerRoundSnapshots(playerId: string, limit: number): RoundSnapshot[];
+  getCurrent(): Promise<Round>;
+  getActive(): Promise<Round[]>;
+  saveCurrent(round: Round): Promise<void>;
+  createNext(): Promise<Round>;
+  addCompleted(round: CompletedRoundRecord): Promise<void>;
+  getHistory(limit: number): Promise<CompletedRoundRecord[]>;
+  getCompleted(roundId: string): Promise<CompletedRoundRecord | undefined>;
+  getPlayerRoundSnapshots(playerId: string, limit: number): Promise<RoundSnapshot[]>;
 }
 
 export interface GameEventPublisher {
@@ -59,6 +61,11 @@ export interface WalletEffectResult {
 export interface GameWalletGateway {
   requestBetDebit(request: WalletEffectRequest): Promise<WalletEffectResult>;
   requestPayoutCredit(request: WalletPayoutRequest): Promise<WalletEffectResult>;
+}
+
+export interface GameMessageReceiptRepository {
+  has(idempotencyKey: string): Promise<boolean>;
+  record(idempotencyKey: string, messageType: string): Promise<void>;
 }
 
 export interface Clock {

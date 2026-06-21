@@ -7,8 +7,8 @@ export const WALLET_CLOCK = Symbol("WALLET_CLOCK");
 export const WALLET_ID_GENERATOR = Symbol("WALLET_ID_GENERATOR");
 
 export interface WalletRepository {
-  findByPlayerId(playerId: string): Wallet | undefined;
-  save(wallet: Wallet): void;
+  findByPlayerId(playerId: string): Promise<Wallet | undefined>;
+  save(wallet: Wallet): Promise<void>;
 }
 
 export interface WalletOperationRecord {
@@ -22,11 +22,16 @@ export interface WalletOperationRecord {
 }
 
 export interface WalletOperationRepository {
-  record(operation: WalletOperationRecord): void;
+  findByIdempotencyKey(idempotencyKey: string): Promise<WalletOperationRecord | undefined>;
+  record(operation: WalletOperationRecord): Promise<WalletOperationRecord>;
+  recordWalletMutation(
+    wallet: Wallet,
+    operation: WalletOperationRecord,
+  ): Promise<WalletOperationRecord>;
 }
 
 export interface WalletResultPublisher {
-  publish(operation: WalletOperationRecord): void;
+  publish(operation: WalletOperationRecord): void | Promise<void>;
 }
 
 export interface Clock {

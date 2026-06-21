@@ -4,11 +4,11 @@ import { Injectable } from "@nestjs/common";
 export class InMemoryGameMessageReceiptRepository {
   private readonly receipts = new Set<string>();
 
-  has(idempotencyKey: string): boolean {
+  async has(idempotencyKey: string): Promise<boolean> {
     return this.receipts.has(idempotencyKey);
   }
 
-  record(idempotencyKey: string): void {
+  async record(idempotencyKey: string): Promise<void> {
     this.receipts.add(idempotencyKey);
   }
 }

@@ -19,14 +19,14 @@ export class WalletsController {
   @Post()
   @UseGuards(KeycloakJwtGuard)
   @ApiOperation({ summary: "Create the current player's wallet idempotently" })
-  create(@Req() request: PlayerRequest): unknown {
+  create(@Req() request: PlayerRequest): Promise<unknown> {
     return this.walletState.createWallet(this.playerId(request));
   }
 
   @Get("me")
   @UseGuards(KeycloakJwtGuard)
   @ApiOperation({ summary: "Get the current player's wallet" })
-  me(@Req() request: PlayerRequest): unknown {
+  me(@Req() request: PlayerRequest): Promise<unknown> {
     return this.walletState.getWallet(this.playerId(request));
   }
 
@@ -35,14 +35,13 @@ export class WalletsController {
   debitBet(
     @Headers("x-internal-token") token: string | undefined,
     @Body() body: WalletEffectBody,
-  ): unknown {
+  ): Promise<unknown> {
     this.assertInternalToken(token);
-    const operation = this.walletState.debitBet(body);
-    return {
+    return this.walletState.debitBet(body).then((operation) => ({
       idempotencyKey: operation.idempotencyKey,
       status: operation.status,
       reason: operation.reason,
-    };
+    }));
   }
 
   @Post("internal/effects/credit-payout")
@@ -50,14 +49,13 @@ export class WalletsController {
   creditPayout(
     @Headers("x-internal-token") token: string | undefined,
     @Body() body: WalletEffectBody,
-  ): unknown {
+  ): Promise<unknown> {
     this.assertInternalToken(token);
-    const operation = this.walletState.creditPayout(body);
-    return {
+    return this.walletState.creditPayout(body).then((operation) => ({
       idempotencyKey: operation.idempotencyKey,
       status: operation.status,
       reason: operation.reason,
-    };
+    }));
   }
 
   private playerId(request: PlayerRequest): string {

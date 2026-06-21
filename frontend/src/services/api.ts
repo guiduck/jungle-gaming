@@ -1,31 +1,76 @@
 import type { CompletedRound, ItemsResponse, Round, Wallet } from "../types";
-import { getAccessToken, getPlayerId } from "./auth";
+import { getAccessToken, getPlayerId, isDevAuthMode } from "./auth";
+import { logFrontendEvent } from "./telemetry";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 export const SOCKET_URL = API_URL;
 
 async function request<T extends object>(path: string, init?: RequestInit): Promise<T> {
   const token = getAccessToken();
-  const response = await fetch(`${API_URL}${path}`, {
-    ...init,
-    headers: {
-      "content-type": "application/json",
-      "x-player-id": getPlayerId(),
-      ...(token ? { authorization: `Bearer ${token}` } : {}),
-      ...init?.headers,
-    },
+  const method = init?.method ?? "GET";
+  const headers = new Headers(init?.headers);
+  headers.set("content-type", "application/json");
+
+  if (isDevAuthMode()) {
+    headers.set("x-player-id", getPlayerId());
+  }
+
+  if (token) {
+    headers.set("authorization", `Bearer ${token}`);
+  }
+
+  logFrontendEvent("api.request.started", {
+    method,
+    path,
+    authMode: isDevAuthMode() ? "dev" : "keycloak",
   });
+
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      ...init,
+      headers,
+    });
+  } catch (error) {
+    logFrontendEvent(
+      "api.request.failed",
+      {
+        method,
+        path,
+        reason: error instanceof Error ? error.message : String(error),
+      },
+      "error",
+    );
+    throw error;
+  }
 
   if (!response.ok) {
     const error = (await response.json().catch(() => null)) as { message?: string } | null;
+    logFrontendEvent(
+      "api.request.rejected",
+      {
+        method,
+        path,
+        status: response.status,
+        reason: error?.message,
+      },
+      "warn",
+    );
     throw new Error(error?.message ?? `Request failed: ${response.status}`);
   }
 
   const data = (await response.json()) as T | { error?: string };
 
   if ("error" in data && data.error) {
+    logFrontendEvent("api.response.error", { method, path, reason: data.error }, "warn");
     throw new Error(data.error);
   }
+
+  logFrontendEvent("api.request.completed", {
+    method,
+    path,
+    status: response.status,
+  });
 
   return data as T;
 }
