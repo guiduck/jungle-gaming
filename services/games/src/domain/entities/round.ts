@@ -1,5 +1,5 @@
 import { Bet } from "./bet";
-import type { BetSnapshot } from "./bet";
+import type { BetSnapshot, CashoutTrigger } from "./bet";
 import { DomainError } from "../errors/domain-error";
 import { CrashPoint } from "../value-objects/crash-point";
 import { Money } from "../value-objects/money";
@@ -14,6 +14,15 @@ export interface RoundSnapshot {
   serverSeedHash?: string;
   nonce?: string;
   bets: BetSnapshot[];
+}
+
+export interface CashoutResult {
+  betId: string;
+  playerId: string;
+  multiplierBps: number;
+  payoutCents: number;
+  cashoutTrigger: CashoutTrigger;
+  autoCashoutMultiplierBps?: number;
 }
 
 export class Round {
@@ -47,7 +56,11 @@ export class Round {
     return this.statusValue;
   }
 
-  assertCanPlaceBet(playerId: PlayerId, amount: Money): void {
+  assertCanPlaceBet(
+    playerId: PlayerId,
+    amount: Money,
+    autoCashoutMultiplierBps?: number | null,
+  ): void {
     if (this.statusValue !== "betting") {
       throw new DomainError("Round is not accepting bets");
     }
@@ -56,13 +69,18 @@ export class Round {
       throw new DomainError("Player already has a bet in this round");
     }
 
-    Bet.create("__validation__", playerId, amount);
+    Bet.create("__validation__", playerId, amount, autoCashoutMultiplierBps);
   }
 
-  placeBet(betId: string, playerId: PlayerId, amount: Money): Bet {
-    this.assertCanPlaceBet(playerId, amount);
+  placeBet(
+    betId: string,
+    playerId: PlayerId,
+    amount: Money,
+    autoCashoutMultiplierBps?: number | null,
+  ): Bet {
+    this.assertCanPlaceBet(playerId, amount, autoCashoutMultiplierBps);
 
-    const bet = Bet.create(betId, playerId, amount);
+    const bet = Bet.create(betId, playerId, amount, autoCashoutMultiplierBps);
     this.bets.push(bet);
     return bet;
   }
@@ -75,7 +93,7 @@ export class Round {
     this.statusValue = "running";
   }
 
-  cashOut(playerId: PlayerId, multiplierBps: number): Money {
+  cashOut(playerId: PlayerId, multiplierBps: number, trigger: CashoutTrigger = "manual"): Money {
     if (this.statusValue !== "running") {
       throw new DomainError("Round is not running");
     }
@@ -90,7 +108,28 @@ export class Round {
       throw new DomainError("Player has no bet in this round");
     }
 
-    return bet.cashOut(multiplierBps);
+    return bet.cashOut(multiplierBps, trigger);
+  }
+
+  autoCashOutEligibleBets(currentMultiplierBps: number): CashoutResult[] {
+    if (this.statusValue !== "running") {
+      return [];
+    }
+
+    return this.bets
+      .filter((bet) => bet.canAutoCashOut(currentMultiplierBps, this.crashPoint.multiplierBps))
+      .map((bet) => {
+        const multiplierBps = bet.autoCashoutMultiplierBps ?? currentMultiplierBps;
+        const payout = bet.cashOut(multiplierBps, "auto");
+        return {
+          betId: bet.id,
+          playerId: bet.playerId.value,
+          multiplierBps,
+          payoutCents: payout.cents,
+          cashoutTrigger: "auto" as const,
+          autoCashoutMultiplierBps: bet.autoCashoutMultiplierBps,
+        };
+      });
   }
 
   crash(): void {

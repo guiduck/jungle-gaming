@@ -96,6 +96,12 @@ server-derived seed/nonce path and remains server-authoritative. The Wallet stil
 local `seed_credit` bootstrap for the demo user, but bet debit, cashout payout, history, and
 verification all flow through the PostgreSQL/RabbitMQ-backed services.
 
+During the betting window, players can optionally enable auto-cashout and choose a target from
+`1.10x` to `100.00x`. The target is stored with the accepted bet and evaluated by the Game Service;
+the frontend only displays the target/result. Auto-cashout uses the same integer-cent payout math
+and idempotent Wallet payout flow as manual cashout, and crash wins when the target is equal to or
+above the crash point.
+
 Use `npm run demo:up` when you want the evaluator/demo harness and deterministic API smoke. That
 command intentionally enables `DEMO_DETERMINISTIC_ROUNDS=true` for repeatable validation; it is not
 the default gameplay mode.

@@ -12,6 +12,7 @@ import {
   setAccessToken,
   setPlayerId,
 } from "./services/auth";
+import { formatMultiplierBps, parseMultiplierInputToBps } from "./services/auto-cashout";
 import { useGameStore } from "./stores/game-store";
 
 function cents(value: number): string {
@@ -19,7 +20,23 @@ function cents(value: number): string {
 }
 
 function multiplier(value: number): string {
-  return `${(value / 10000).toFixed(2)}x`;
+  return formatMultiplierBps(value);
+}
+
+function betResultLabel(bet: { status: string; cashoutTrigger?: "manual" | "auto"; autoCashoutMultiplierBps?: number }): string {
+  if (bet.status === "pending" && bet.autoCashoutMultiplierBps) {
+    return `auto @ ${multiplier(bet.autoCashoutMultiplierBps)}`;
+  }
+
+  if (bet.status === "cashed_out" && bet.cashoutTrigger === "auto") {
+    return "auto cashout";
+  }
+
+  if (bet.status === "cashed_out" && bet.cashoutTrigger === "manual") {
+    return "manual cashout";
+  }
+
+  return bet.status;
 }
 
 export function App() {
@@ -69,6 +86,8 @@ export function App() {
 function AuthenticatedGame() {
   const isDevMode = isDevAuthMode();
   const [amountCents, setAmountCents] = useState(100);
+  const [autoCashoutEnabled, setAutoCashoutEnabled] = useState(false);
+  const [autoCashoutTarget, setAutoCashoutTarget] = useState("1.50");
   const [playerInput, setPlayerInput] = useState(getPlayerId());
   const [tokenInput, setTokenInput] = useState("");
   const {
@@ -92,10 +111,17 @@ function AuthenticatedGame() {
     () => round?.bets.find((bet) => bet.playerId === playerId),
     [playerId, round],
   );
+  const autoCashoutMultiplierBps = autoCashoutEnabled
+    ? parseMultiplierInputToBps(autoCashoutTarget)
+    : undefined;
+  const hasAcceptedBet = Boolean(myBet);
 
   const onBet = (event: FormEvent) => {
     event.preventDefault();
-    placeBetMutation.mutate(amountCents);
+    placeBetMutation.mutate({
+      amountCents,
+      autoCashoutMultiplierBps: autoCashoutMultiplierBps ?? null,
+    });
   };
 
   return (
@@ -156,10 +182,42 @@ function AuthenticatedGame() {
                 onChange={(event) => setAmountCents(Number(event.target.value))}
               />
             </label>
-            <button disabled={round?.status !== "betting" || placeBetMutation.isPending}>
+            <label className="check-row">
+              <input
+                type="checkbox"
+                checked={autoCashoutEnabled}
+                disabled={hasAcceptedBet}
+                onChange={(event) => setAutoCashoutEnabled(event.target.checked)}
+              />
+              Auto cashout
+            </label>
+            {autoCashoutEnabled ? (
+              <label>
+                Target
+                <input
+                  min={1.1}
+                  max={100}
+                  step={0.05}
+                  type="number"
+                  value={autoCashoutTarget}
+                  disabled={hasAcceptedBet}
+                  onChange={(event) => setAutoCashoutTarget(event.target.value)}
+                />
+              </label>
+            ) : null}
+            <button
+              disabled={
+                round?.status !== "betting" ||
+                placeBetMutation.isPending ||
+                (autoCashoutEnabled && autoCashoutMultiplierBps === null)
+              }
+            >
               Place bet
             </button>
           </form>
+          {myBet?.autoCashoutMultiplierBps && myBet.status === "pending" ? (
+            <p className="status">Auto target: {multiplier(myBet.autoCashoutMultiplierBps)}</p>
+          ) : null}
           <button
             className="cashout"
             disabled={round?.status !== "running" || !myBet || myBet.status !== "pending"}
@@ -204,7 +262,7 @@ function AuthenticatedGame() {
                 <li key={bet.id}>
                   <span>{bet.playerId}</span>
                   <strong>{cents(bet.amountCents)}</strong>
-                  <em>{bet.status}</em>
+                  <em>{betResultLabel(bet)}</em>
                 </li>
               ))}
             </ul>
@@ -240,7 +298,7 @@ function AuthenticatedGame() {
                   <li key={item.id}>
                     <span>{item.id}</span>
                     <strong>{bet ? cents(bet.amountCents) : "-"}</strong>
-                    <em>{bet?.status ?? "none"}</em>
+                    <em>{bet ? betResultLabel(bet) : "none"}</em>
                   </li>
                 );
               })}

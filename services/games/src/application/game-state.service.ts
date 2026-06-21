@@ -71,12 +71,16 @@ export class GameStateService {
     return this.rounds.getPlayerRoundSnapshots(playerId.value, 20);
   }
 
-  async placeBet(playerIdValue: string, amountCents: number): Promise<RoundSnapshot> {
+  async placeBet(
+    playerIdValue: string,
+    amountCents: number,
+    autoCashoutMultiplierBps?: number | null,
+  ): Promise<RoundSnapshot> {
     const playerId = PlayerId.from(playerIdValue);
     const round = await this.rounds.getCurrent();
     const betId = this.ids.next(`bet-${playerId.value}`);
     const amount = Money.fromCents(amountCents);
-    round.assertCanPlaceBet(playerId, amount);
+    round.assertCanPlaceBet(playerId, amount, autoCashoutMultiplierBps);
     const now = this.clock.now().toISOString();
     const debitResult = await this.walletGateway.requestBetDebit({
       idempotencyKey: `bet-debit:${round.id}:${playerId.value}`,
@@ -101,6 +105,7 @@ export class GameStateService {
       betId,
       playerId,
       amount,
+      autoCashoutMultiplierBps,
     );
     await this.rounds.saveCurrent(round);
     this.events.publish("bet.accepted", {
@@ -108,6 +113,7 @@ export class GameStateService {
       betId: bet.id,
       playerId: playerId.value,
       amountCents,
+      autoCashoutMultiplierBps: bet.autoCashoutMultiplierBps,
       walletOperationKey: debitResult.idempotencyKey,
     });
     return round.toSnapshot();
@@ -116,7 +122,7 @@ export class GameStateService {
   async cashOut(playerIdValue: string, multiplierBps: number): Promise<RoundSnapshot> {
     const round = await this.rounds.getCurrent();
     const playerId = PlayerId.from(playerIdValue);
-    const payout = round.cashOut(playerId, multiplierBps);
+    const payout = round.cashOut(playerId, multiplierBps, "manual");
     await this.rounds.saveCurrent(round);
     this.logger.log(formatLogEvent("cashout.accepted", {
       roundId: round.id,
@@ -129,7 +135,41 @@ export class GameStateService {
       playerId: playerId.value,
       multiplierBps,
       payoutCents: payout.cents,
+      cashoutTrigger: "manual",
     });
+    return round.toSnapshot();
+  }
+
+  async evaluateAutoCashouts(currentMultiplierBps: number): Promise<RoundSnapshot> {
+    const round = await this.rounds.getCurrent();
+    const results = round.autoCashOutEligibleBets(currentMultiplierBps);
+
+    if (results.length === 0) {
+      return round.toSnapshot();
+    }
+
+    await this.rounds.saveCurrent(round);
+
+    for (const result of results) {
+      this.logger.log(formatLogEvent("cashout.auto.accepted", {
+        roundId: round.id,
+        betId: result.betId,
+        playerId: result.playerId,
+        multiplierBps: result.multiplierBps,
+        amountCents: result.payoutCents,
+        cashoutTrigger: result.cashoutTrigger,
+      }));
+      this.events.publish("cashout.accepted", {
+        roundId: round.id,
+        betId: result.betId,
+        playerId: result.playerId,
+        multiplierBps: result.multiplierBps,
+        payoutCents: result.payoutCents,
+        cashoutTrigger: result.cashoutTrigger,
+        autoCashoutMultiplierBps: result.autoCashoutMultiplierBps,
+      });
+    }
+
     return round.toSnapshot();
   }
 

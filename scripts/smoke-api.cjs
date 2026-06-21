@@ -37,19 +37,12 @@ async function main() {
   const startingBalanceCents = wallet.balanceCents;
   assertCondition("wallet starting balance", Number.isInteger(startingBalanceCents));
 
-  const round = await prepareBettingRound(playerId, auth);
-  const placed = await fetchJson(`${defaults.kongUrl}/games/bet`, {
-    method: "POST",
-    headers: { ...auth, "content-type": "application/json" },
-    body: JSON.stringify({ amountCents: betAmountCents }),
-  });
-  const bet = placed.bets.find((candidate) => candidate.playerId === playerId);
-  assertCondition("accepted bet", bet?.status === "pending", JSON.stringify(placed));
+  const { round, bet } = await placeSmokeBet(playerId, auth);
 
   const postBetWallet = await fetchJson(`${defaults.kongUrl}/wallets/me`, { headers: auth });
   assertEqual("post-bet balance", postBetWallet.balanceCents, startingBalanceCents - betAmountCents);
 
-  await fetchJson(`${defaults.kongUrl}/games/rounds/current/start`, { method: "POST" });
+  await ensureRoundRunning(round.id);
 
   let cashedOut;
   let finalExpectation;
@@ -67,7 +60,7 @@ async function main() {
     finalExpectation = startingBalanceCents - betAmountCents;
   }
 
-  const crashed = await fetchJson(`${defaults.kongUrl}/games/rounds/current/crash`, { method: "POST" });
+  const crashed = await completeRound(round.id);
   await settleIfStillCurrentCrashed(crashed.id);
 
   const finalWallet = await waitFor("wallet final balance", async () => {
@@ -106,6 +99,79 @@ async function settleIfStillCurrentCrashed(roundId) {
 
   if (current.id === roundId && current.status === "crashed") {
     await fetchJson(`${defaults.kongUrl}/games/rounds/current/settle`, { method: "POST" });
+  }
+}
+
+async function ensureRoundRunning(roundId) {
+  return waitFor("prepared round running", async () => {
+    const current = await fetchJson(`${defaults.kongUrl}/games/rounds/current`);
+
+    if (current.id !== roundId) {
+      throw new Error(`prepared round ${roundId} is no longer current`);
+    }
+
+    if (current.status === "running") {
+      return current;
+    }
+
+    if (current.status === "betting") {
+      const started = await maybeFetchJson(`${defaults.kongUrl}/games/rounds/current/start`, {
+        method: "POST",
+      });
+
+      if (started?.id === roundId && started.status === "running") {
+        return started;
+      }
+    }
+
+    throw new Error(`prepared round ${roundId} is ${current.status}`);
+  }, {
+    timeoutMs: 15000,
+    intervalMs: 250,
+  });
+}
+
+async function completeRound(roundId) {
+  return waitFor("prepared round completion", async () => {
+    const current = await fetchJson(`${defaults.kongUrl}/games/rounds/current`);
+
+    if (current.id === roundId && current.status === "running") {
+      const crashed = await maybeFetchJson(`${defaults.kongUrl}/games/rounds/current/crash`, {
+        method: "POST",
+      });
+
+      if (crashed?.id === roundId && crashed.status === "crashed") {
+        return crashed;
+      }
+    }
+
+    if (current.id === roundId && current.status === "crashed") {
+      return current;
+    }
+
+    const history = await fetchJson(`${defaults.kongUrl}/games/rounds/history`);
+    const completed = history.items?.find((item) => item.id === roundId);
+
+    if (completed) {
+      return completed;
+    }
+
+    throw new Error(`prepared round ${roundId} is ${current.id === roundId ? current.status : "not current"}`);
+  }, {
+    timeoutMs: 20000,
+    intervalMs: 250,
+  });
+}
+
+async function maybeFetchJson(url, options) {
+  try {
+    return await fetchJson(url, options);
+  } catch (error) {
+    if (error.message.includes(" returned 400:")) {
+      return undefined;
+    }
+
+    throw error;
   }
 }
 
@@ -154,6 +220,29 @@ async function prepareBettingRound(playerId, auth) {
   }
 
   throw new Error("Could not prepare a betting round for smoke");
+}
+
+async function placeSmokeBet(playerId, auth) {
+  return waitFor("accepted smoke bet", async () => {
+    await prepareBettingRound(playerId, auth);
+
+    const placed = await maybeFetchJson(`${defaults.kongUrl}/games/bet`, {
+      method: "POST",
+      headers: { ...auth, "content-type": "application/json" },
+      body: JSON.stringify({ amountCents: betAmountCents }),
+    });
+
+    const bet = placed?.bets?.find((candidate) => candidate.playerId === playerId);
+
+    if (bet?.status !== "pending") {
+      throw new Error(`bet was not accepted: ${JSON.stringify(placed)}`);
+    }
+
+    return { round: placed, bet };
+  }, {
+    timeoutMs: 30000,
+    intervalMs: 250,
+  });
 }
 
 function verifyRound(round) {

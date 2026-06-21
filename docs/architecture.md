@@ -67,6 +67,10 @@ experiencia de forma fluida.
 - REST: acoes do jogador, como apostar e sacar.
 - WebSocket: atualizacoes servidor-cliente, como janela de apostas aberta, rodada iniciada, tick de
   multiplicador, aposta aceita, cashout aceito, rodada crashada e liquidacao concluida.
+- Auto cashout: configuracao opcional enviada no `POST /games/bet` como
+  `autoCashoutMultiplierBps`. O Game Service persiste o alvo junto da aposta, avalia o alvo no
+  runner durante `running` antes de publicar o proximo tick visivel e emite `cashout.accepted` com
+  `cashoutTrigger=auto` quando o cashout automatico vence antes do crash.
 
 ## Notas Operacionais
 
@@ -122,3 +126,8 @@ registrados.
 Nota de hardening: a reconciliacao de restart tem cobertura e2e para garantir que rodadas antigas
 `running/crashed` sejam terminalizadas sem descartar participacao visivel e que reste apenas um
 round ativo jogavel.
+
+Nota de auto cashout: o alvo automatico e um dado da aposta, nao uma preferencia transiente do
+frontend. O payout continua sendo calculado no dominio Game com centavos inteiros e multiplicador em
+basis points; o Wallet recebe o mesmo fluxo idempotente de credito de payout usado por cashout
+manual.

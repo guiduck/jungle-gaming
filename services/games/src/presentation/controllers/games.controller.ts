@@ -52,7 +52,16 @@ export class GamesController {
     @Body() body: PlaceBetRequestDto,
   ): Promise<unknown> {
     this.assertInteger(body.amountCents, "amountCents");
-    return this.run(() => this.gameState.placeBet(this.playerId(request), body.amountCents));
+    if (body.autoCashoutMultiplierBps !== undefined && body.autoCashoutMultiplierBps !== null) {
+      this.assertInteger(body.autoCashoutMultiplierBps, "autoCashoutMultiplierBps");
+    }
+    return this.run(() =>
+      this.gameState.placeBet(
+        this.playerId(request),
+        body.amountCents,
+        body.autoCashoutMultiplierBps,
+      ),
+    );
   }
 
   @Post("bet/cashout")

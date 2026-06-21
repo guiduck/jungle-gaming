@@ -163,9 +163,13 @@ export function useGame() {
     myBetsQuery,
     verificationQuery,
     placeBetMutation: useMutation({
-      mutationFn: placeBet,
-      onMutate: (amountCents) => {
-        logGameEvent("bet.submit.started", { amountCents });
+      mutationFn: (input: { amountCents: number; autoCashoutMultiplierBps?: number | null }) =>
+        placeBet(input.amountCents, input.autoCashoutMultiplierBps),
+      onMutate: ({ amountCents, autoCashoutMultiplierBps }) => {
+        logGameEvent("bet.submit.started", {
+          amountCents,
+          autoCashoutMultiplierBps: autoCashoutMultiplierBps ?? undefined,
+        });
       },
       onSuccess: async (round) => {
         logGameEvent("bet.submit.accepted", { roundId: round.id, status: round.status });

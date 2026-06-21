@@ -26,10 +26,12 @@ E dono do saldo do jogador, das operacoes monetarias e da integridade da liquida
 
 - Entidade pertencente a `Round`.
 - Campos principais: id, id da rodada, id do jogador, valor, status, multiplicador opcional de
-  cashout e payout opcional.
+  cashout, payout opcional, alvo opcional de auto cashout e origem do cashout (`manual` ou `auto`).
 - Ciclo de vida: `pending` -> `cashed_out` ou `lost`; apostas rejeitadas nao entram no aggregate.
-- Comportamento principal: validar valor, sacar uma unica vez, calcular payout com aritmetica
-  segura para dinheiro e impedir reentrada apos cashout.
+- Comportamento principal: validar valor, validar alvo opcional de auto cashout, sacar uma unica
+  vez, calcular payout com aritmetica segura para dinheiro e impedir reentrada apos cashout.
+- Auto cashout usa `autoCashoutMultiplierBps` opcional entre `11000` (`1.10x`) e `1000000`
+  (`100.00x`). Valor ausente ou nulo significa aposta manual-only.
 
 ### `CrashPoint`
 
@@ -61,6 +63,10 @@ E dono do saldo do jogador, das operacoes monetarias e da integridade da liquida
 - Apostas so sao aceitas durante a fase `betting`.
 - Cashout so e permitido durante a fase `running` e apenas para uma aposta `pending` daquele
   jogador.
+- Auto cashout so e aplicado pelo servidor durante a fase `running`, para apostas `pending`, quando
+  o alvo foi atingido e o alvo e estritamente menor que o ponto de crash.
+- Se o alvo de auto cashout for igual ou maior que o ponto de crash, o crash vence e a aposta
+  pendente e marcada como perdida.
 - Uma aposta `cashed_out` nao pode ser sacada de novo nem reentrar na mesma rodada.
 - O ponto de crash da rodada e predeterminado antes do inicio.
 - O saldo da carteira nunca pode ficar negativo.
@@ -84,10 +90,12 @@ E dono do saldo do jogador, das operacoes monetarias e da integridade da liquida
   opcionais nulos do banco antes de recriar entidades de dominio.
 - Restart reconciliation preserva bets aceitas; rodadas `running` interrompidas sao crashadas para
   um resultado terminal explicavel e rodadas `crashed` sao liquidadas com payout idempotente.
+- Auto cashout foi adicionado como diferencial de Phase 4 sem alterar a regra de dinheiro: o Game
+  persiste o alvo na aposta, registra `cashoutTrigger` quando o cashout acontece e continua usando
+  `payout-credit:{roundId}:{betId}` para credito idempotente no Wallet.
 
 ## Perguntas em Aberto
 
-- Auto cashout deve entrar apenas depois que os criterios eliminatorios estiverem completos.
 - A reconciliacao deve ser fortalecida para provar que nao ficam multiplas rodadas ativas jogaveis
   apos restart ou apos dados antigos de smoke.
 - A curva visual final da montanha deve ser especificada em uma proxima etapa de polish, usando a

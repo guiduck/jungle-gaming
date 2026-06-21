@@ -72,7 +72,7 @@ export class MikroOrmRoundRepository implements RoundRepository {
     entity.settledAt = snapshot.status === "settled" && !entity.settledAt ? now : entity.settledAt;
 
     await em.persistAndFlush(entity);
-    await em.nativeDelete(BetEntity, { round: entity } as any);
+    await em.nativeDelete(BetEntity, { round: snapshot.id } as any);
 
     const bets = snapshot.bets.map((bet) => {
       const betEntity = new BetEntity();
@@ -83,6 +83,8 @@ export class MikroOrmRoundRepository implements RoundRepository {
       betEntity.status = bet.status;
       betEntity.cashoutMultiplierBps = bet.cashoutMultiplierBps;
       betEntity.payoutCents = bet.payoutCents;
+      betEntity.autoCashoutMultiplierBps = bet.autoCashoutMultiplierBps;
+      betEntity.cashoutTrigger = bet.cashoutTrigger;
       betEntity.walletOperationKey = `bet-debit:${entity.id}:${bet.playerId}`;
       betEntity.createdAt = now;
       betEntity.updatedAt = now;
@@ -159,6 +161,8 @@ export class MikroOrmRoundRepository implements RoundRepository {
         status: bet.status,
         cashoutMultiplierBps: bet.cashoutMultiplierBps ?? undefined,
         payoutCents: bet.payoutCents ?? undefined,
+        autoCashoutMultiplierBps: bet.autoCashoutMultiplierBps ?? undefined,
+        cashoutTrigger: bet.cashoutTrigger ?? undefined,
       })),
     });
   }
@@ -198,6 +202,8 @@ export class MikroOrmRoundRepository implements RoundRepository {
         betEntity.status = bet.status;
         betEntity.cashoutMultiplierBps = bet.cashoutMultiplierBps;
         betEntity.payoutCents = bet.payoutCents;
+        betEntity.autoCashoutMultiplierBps = bet.autoCashoutMultiplierBps;
+        betEntity.cashoutTrigger = bet.cashoutTrigger;
         betEntity.walletOperationKey = `bet-debit:${entity.id}:${bet.playerId}`;
         betEntity.createdAt = now;
         betEntity.updatedAt = now;

@@ -7,6 +7,8 @@ export interface Bet {
   status: "pending" | "cashed_out" | "lost";
   cashoutMultiplierBps?: number;
   payoutCents?: number;
+  autoCashoutMultiplierBps?: number;
+  cashoutTrigger?: "manual" | "auto";
 }
 
 export interface Round {

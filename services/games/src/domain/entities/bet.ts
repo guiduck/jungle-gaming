@@ -3,6 +3,10 @@ import { Money } from "../value-objects/money";
 import { PlayerId } from "../value-objects/player-id";
 
 export type BetStatus = "pending" | "cashed_out" | "lost";
+export type CashoutTrigger = "manual" | "auto";
+
+export const AUTO_CASHOUT_MIN_BPS = 11000;
+export const AUTO_CASHOUT_MAX_BPS = 1000000;
 
 export interface BetSnapshot {
   id: string;
@@ -11,25 +15,36 @@ export interface BetSnapshot {
   status: BetStatus;
   cashoutMultiplierBps?: number;
   payoutCents?: number;
+  autoCashoutMultiplierBps?: number;
+  cashoutTrigger?: CashoutTrigger;
 }
 
 export class Bet {
   private statusValue: BetStatus = "pending";
   private cashoutMultiplierValue?: number;
   private payoutValue?: Money;
+  private cashoutTriggerValue?: CashoutTrigger;
 
   private constructor(
     public readonly id: string,
     public readonly playerId: PlayerId,
     public readonly amount: Money,
+    private readonly autoCashoutMultiplierValue?: number,
   ) {}
 
-  static create(id: string, playerId: PlayerId, amount: Money): Bet {
+  static create(
+    id: string,
+    playerId: PlayerId,
+    amount: Money,
+    autoCashoutMultiplierBps?: number | null,
+  ): Bet {
     if (amount.cents < 100 || amount.cents > 100000) {
       throw new DomainError("Bet amount must be between 1.00 and 1000.00");
     }
 
-    return new Bet(id, playerId, amount);
+    const autoCashoutMultiplier = Bet.normalizeAutoCashoutMultiplier(autoCashoutMultiplierBps);
+
+    return new Bet(id, playerId, amount, autoCashoutMultiplier);
   }
 
   static rehydrate(snapshot: BetSnapshot): Bet {
@@ -37,9 +52,11 @@ export class Bet {
       snapshot.id,
       PlayerId.from(snapshot.playerId),
       Money.fromCents(snapshot.amountCents),
+      snapshot.autoCashoutMultiplierBps,
     );
     bet.statusValue = snapshot.status;
     bet.cashoutMultiplierValue = snapshot.cashoutMultiplierBps;
+    bet.cashoutTriggerValue = snapshot.cashoutTrigger;
     bet.payoutValue =
       snapshot.payoutCents === undefined ? undefined : Money.fromCents(snapshot.payoutCents);
     return bet;
@@ -49,13 +66,18 @@ export class Bet {
     return this.statusValue;
   }
 
-  cashOut(multiplierBps: number): Money {
+  get autoCashoutMultiplierBps(): number | undefined {
+    return this.autoCashoutMultiplierValue;
+  }
+
+  cashOut(multiplierBps: number, trigger: CashoutTrigger = "manual"): Money {
     if (this.statusValue !== "pending") {
       throw new DomainError("Bet is not pending");
     }
 
     this.statusValue = "cashed_out";
     this.cashoutMultiplierValue = multiplierBps;
+    this.cashoutTriggerValue = trigger;
     this.payoutValue = this.amount.multiplyByMultiplierBps(multiplierBps);
     return this.payoutValue;
   }
@@ -70,6 +92,31 @@ export class Bet {
     return this.playerId.equals(playerId);
   }
 
+  canAutoCashOut(currentMultiplierBps: number, crashMultiplierBps: number): boolean {
+    return (
+      this.statusValue === "pending" &&
+      this.autoCashoutMultiplierValue !== undefined &&
+      this.autoCashoutMultiplierValue <= currentMultiplierBps &&
+      this.autoCashoutMultiplierValue < crashMultiplierBps
+    );
+  }
+
+  static normalizeAutoCashoutMultiplier(value?: number | null): number | undefined {
+    if (value === undefined || value === null) {
+      return undefined;
+    }
+
+    if (
+      !Number.isInteger(value) ||
+      value < AUTO_CASHOUT_MIN_BPS ||
+      value > AUTO_CASHOUT_MAX_BPS
+    ) {
+      throw new DomainError("Auto cashout multiplier must be between 1.10x and 100.00x");
+    }
+
+    return value;
+  }
+
   toSnapshot(): BetSnapshot {
     return {
       id: this.id,
@@ -78,6 +125,8 @@ export class Bet {
       status: this.statusValue,
       cashoutMultiplierBps: this.cashoutMultiplierValue,
       payoutCents: this.payoutValue?.cents,
+      autoCashoutMultiplierBps: this.autoCashoutMultiplierValue,
+      cashoutTrigger: this.cashoutTriggerValue,
     };
   }
 }

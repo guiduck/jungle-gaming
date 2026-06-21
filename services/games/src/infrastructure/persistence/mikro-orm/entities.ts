@@ -21,6 +21,8 @@ export class BetEntity {
   status!: "pending" | "cashed_out" | "lost";
   cashoutMultiplierBps?: number;
   payoutCents?: number;
+  autoCashoutMultiplierBps?: number;
+  cashoutTrigger?: "manual" | "auto";
   walletOperationKey!: string;
   createdAt!: Date;
   updatedAt!: Date;

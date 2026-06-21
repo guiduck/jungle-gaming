@@ -35,6 +35,12 @@ export const betSchema = new EntitySchema<any>({
       nullable: true,
     },
     payoutCents: { type: "number", fieldName: "payout_cents", nullable: true },
+    autoCashoutMultiplierBps: {
+      type: "number",
+      fieldName: "auto_cashout_multiplier_bps",
+      nullable: true,
+    },
+    cashoutTrigger: { type: "string", fieldName: "cashout_trigger", nullable: true },
     walletOperationKey: { type: "string", fieldName: "wallet_operation_key" },
     createdAt: { type: "Date", fieldName: "created_at" },
     updatedAt: { type: "Date", fieldName: "updated_at" },

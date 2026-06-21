@@ -62,6 +62,7 @@ export class RoundRunnerService implements OnModuleInit, OnModuleDestroy {
           round.crashMultiplierBps,
           this.runningMultiplierBps + MULTIPLIER_STEP_BPS,
         );
+        await this.gameState.evaluateAutoCashouts(this.runningMultiplierBps);
         await this.gameState.publishMultiplierTick(this.runningMultiplierBps);
 
         if (this.runningMultiplierBps >= round.crashMultiplierBps) {

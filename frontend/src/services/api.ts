@@ -99,10 +99,18 @@ export async function createWallet(): Promise<Wallet> {
   return request<Wallet>("/wallets", { method: "POST", body: "{}" });
 }
 
-export async function placeBet(amountCents: number): Promise<Round> {
+export async function placeBet(
+  amountCents: number,
+  autoCashoutMultiplierBps?: number | null,
+): Promise<Round> {
+  const payload =
+    autoCashoutMultiplierBps === undefined
+      ? { amountCents }
+      : { amountCents, autoCashoutMultiplierBps };
+
   return request<Round>("/games/bet", {
     method: "POST",
-    body: JSON.stringify({ amountCents }),
+    body: JSON.stringify(payload),
   });
 }
 

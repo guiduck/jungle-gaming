@@ -55,6 +55,11 @@ describe("Game money and persistence flows", () => {
 
     const invalidAmount = createService();
     await expect(invalidAmount.placeBet("player-1", 99)).rejects.toThrow("between 1.00 and 1000.00");
+
+    const invalidAutoGateway = new FakeWalletGateway();
+    const invalidAuto = createService({ gateway: invalidAutoGateway });
+    await expect(invalidAuto.placeBet("player-1", 250, 10999)).rejects.toThrow("Auto cashout");
+    expect(invalidAutoGateway.debits).toHaveLength(0);
   });
 
   test("accepts cashout before crash, rejects after crash, and preserves verification metadata", async () => {
@@ -67,6 +72,7 @@ describe("Game money and persistence flows", () => {
 
     expect(cashedOut.bets[0]?.status).toBe("cashed_out");
     expect(cashedOut.bets[0]?.payoutCents).toBe(275);
+    expect(cashedOut.bets[0]?.cashoutTrigger).toBe("manual");
 
     const crashed = await service.crashRound();
     await expect(service.cashOut("player-1", 10500)).rejects.toThrow("not running");
@@ -98,6 +104,34 @@ describe("Game money and persistence flows", () => {
     expect(active[0]?.status).toBe("betting");
     expect(repository.completed.map((round) => round.id)).toContain("old-betting");
     expect(repository.completed.map((round) => round.id)).toContain("old-running");
+  });
+
+  test("persists auto-cashout data, publishes events, and replays payout idempotently", async () => {
+    const repository = new FakeRoundRepository([createRoundWithCrashPoint("round-auto", "betting", 20000)]);
+    const gateway = new FakeWalletGateway({ status: "accepted", idempotencyKey: "" });
+    const events = new RecordingEvents();
+    const service = createService({ repository, gateway, events });
+
+    const placed = await service.placeBet("player-1", 250, 15000);
+    expect(placed.bets[0]?.autoCashoutMultiplierBps).toBe(15000);
+
+    await service.startRound();
+    const evaluated = await service.evaluateAutoCashouts(15500);
+    expect(evaluated.bets[0]?.cashoutTrigger).toBe("auto");
+    expect(evaluated.bets[0]?.payoutCents).toBe(375);
+    expect(events.events.some((event) =>
+      event.eventName === "cashout.accepted" &&
+      event.payload.cashoutTrigger === "auto" &&
+      event.payload.autoCashoutMultiplierBps === 15000
+    )).toBe(true);
+
+    const snapshot = (await repository.getCurrent()).toSnapshot();
+    expect(snapshot.bets[0]?.autoCashoutMultiplierBps).toBe(15000);
+    expect(snapshot.bets[0]?.cashoutTrigger).toBe("auto");
+
+    await service.crashRound();
+    expect(gateway.payouts).toHaveLength(1);
+    expect(gateway.payouts[0]?.idempotencyKey).toBe("payout-credit:round-auto:bet-player-1-1");
   });
 });
 
@@ -152,6 +186,14 @@ class FakeRoundRepository implements RoundRepository {
   }
 }
 
+class RecordingEvents implements GameEventPublisher {
+  readonly events: Array<{ eventName: string; payload: Record<string, unknown> }> = [];
+
+  publish(eventName: string, payload: Record<string, unknown>): void {
+    this.events.push({ eventName, payload });
+  }
+}
+
 class FakeWalletGateway implements GameWalletGateway {
   readonly debits: WalletEffectRequest[] = [];
   readonly payouts: WalletPayoutRequest[] = [];
@@ -172,10 +214,11 @@ class FakeWalletGateway implements GameWalletGateway {
 function createService(options: {
   repository?: FakeRoundRepository;
   gateway?: FakeWalletGateway;
+  events?: GameEventPublisher;
 } = {}): GameStateService {
   return new GameStateService(
     options.repository ?? new FakeRoundRepository(),
-    { publish: () => undefined } satisfies GameEventPublisher,
+    options.events ?? ({ publish: () => undefined } satisfies GameEventPublisher),
     options.gateway ?? new FakeWalletGateway(),
     { now: () => new Date("2026-06-20T00:00:00.000Z") } satisfies Clock,
     { next: (prefix: string) => `${prefix}-1` } satisfies IdGenerator,
@@ -189,6 +232,25 @@ function createRound(id: string, status: "betting" | "running"): Round {
     CrashPoint.fromBasisPoints(fairness.crashPoint.multiplierBps),
     fairness.serverSeedHash,
     fairness.nonce,
+  );
+
+  if (status === "running") {
+    round.start();
+  }
+
+  return round;
+}
+
+function createRoundWithCrashPoint(
+  id: string,
+  status: "betting" | "running",
+  crashMultiplierBps: number,
+): Round {
+  const round = new Round(
+    id,
+    CrashPoint.fromBasisPoints(crashMultiplierBps),
+    "controlled-hash",
+    id,
   );
 
   if (status === "running") {

@@ -195,12 +195,13 @@ Consequencias:
 
 ## ADR-008: Adiar a Curva Visual da Montanha para uma Spec de Polish
 
-Status: Proposta.
+Status: Aceita para `specs/005-procedural-crash-mountain-goat-angle/`.
 
 Decisao:
 
-Implementar a montanha baseada na formula de curva do crash em uma spec posterior de polish de
-gameplay, depois da persistencia PostgreSQL, auth real e e2e critico.
+Implementar a montanha baseada na formula de curva do crash na spec de polish
+`005-procedural-crash-mountain-goat-angle`, depois da persistencia PostgreSQL, auth real,
+e2e critico, confianca operacional e auto-cashout server-authoritative.
 
 Contexto:
 
@@ -211,10 +212,11 @@ de validacao de cashout/saldo antes de ser priorizado.
 
 Consequencias:
 
-- A UI atual pode continuar usando sprites de idle/corrida/pulo e uma montanha CSS simples.
-- A proxima etapa recomendada continua sendo persistencia, auth e e2e.
 - A spec de polish deve definir a formula visual, o mapeamento multiplicador->coordenadas e a
   rotacao da cabra pela inclinacao da curva.
+- A curva visual deve ser derivada de `displayedMultiplierBps`; ela nao altera crash point,
+  cashout, auto-cashout, saldo, historico, ou verificacao provably fair.
+- Ranking/read-only history volta para a lista de bonus posteriores.
 
 ## ADR-009: Usar Migrations Automaticas no Docker Compose
 
