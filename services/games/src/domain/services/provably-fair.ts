@@ -2,6 +2,8 @@ import { createHash, createHmac } from "crypto";
 import { CrashPoint } from "../value-objects/crash-point";
 
 const DEFAULT_HOUSE_EDGE_BPS = 100;
+const HMAC_SAMPLE_HEX_CHARS = 13;
+const HMAC_SAMPLE_MAX = 0xfffffffffffff;
 
 export interface ProvablyFairRound {
   serverSeed: string;
@@ -36,8 +38,8 @@ export class ProvablyFair {
     houseEdgeBps = DEFAULT_HOUSE_EDGE_BPS,
   ): CrashPoint {
     const digest = createHmac("sha256", serverSeed).update(nonce).digest("hex");
-    const sample = Number.parseInt(digest.slice(0, 13), 16);
-    const ratio = sample / 0x1fffffffffffff;
+    const sample = Number.parseInt(digest.slice(0, HMAC_SAMPLE_HEX_CHARS), 16);
+    const ratio = sample / HMAC_SAMPLE_MAX;
     const edge = (10000 - houseEdgeBps) / 10000;
     const multiplier = Math.max(1, edge / Math.max(0.000001, 1 - ratio));
     return CrashPoint.fromBasisPoints(Math.max(10000, Math.floor(multiplier * 10000)));

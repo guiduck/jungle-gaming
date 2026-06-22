@@ -1,275 +1,256 @@
 # Jungle Crash Game
 
-Full-stack senior challenge based on the Jungle Gaming crash game repository.
+Jungle Crash Game is a real-time multiplayer crash betting game built for the Jungle Gaming
+full-stack senior challenge.
 
-The product is a real-time multiplayer crash game: players bet before the round starts, watch a
-multiplier rise from `1.00x`, and must cash out before the server-side crash point. This
-implementation will keep the betting/game engine authoritative on the backend and render the crash
-experience as a goat climbing a mountain in the frontend.
+The backend is authoritative for rounds, bets, cashout, wallet settlement, and provably fair crash
+verification. The frontend renders the game as a goat climbing a mountain while the multiplier
+rises.
 
-## Stack Direction
+## What Is Included
 
-- Runtime: Bun.
-- Backend: NestJS + TypeScript strict.
-- Persistence: PostgreSQL + MikroORM.
-- Messaging: RabbitMQ.
-- Gateway: Kong.
-- Identity provider: Keycloak.
-- Frontend: Vite + React + Tailwind CSS v4 + shadcn/ui.
-- State: TanStack Query for server state, Zustand for hot game state.
-- Local delivery: Docker Compose.
+- Games service: NestJS, DDD-style domain, MikroORM/PostgreSQL persistence, RabbitMQ wallet effects,
+  REST commands, WebSocket round events, Swagger docs, and tests.
+- Wallets service: NestJS, wallet aggregate, MikroORM/PostgreSQL persistence, RabbitMQ debit/payout
+  consumer, idempotent operations, Swagger docs, and tests.
+- Frontend: Vite, React, Tailwind CSS, TanStack Query, Zustand, Keycloak PKCE login, goat/mountain
+  game scene, betting/cashout UI, history, leaderboard, player bets, and verification panel.
+- Local infrastructure: Docker Compose with PostgreSQL, RabbitMQ, Keycloak, Kong, Games, Wallets,
+  automatic migrations, and frontend.
 
-## Why MikroORM
+## Prerequisites
 
-MikroORM is selected because the challenge heavily evaluates DDD, aggregates, invariants, and
-service boundaries. It lets the services model `Round`, `Bet`, and `Wallet` as rich domain classes
-while keeping persistence details in infrastructure repositories.
+- Docker Desktop running.
+- Node.js 20+.
+- npm.
+- Optional: Bun, if you prefer `bun run docker:up`.
 
-See `docs/architecture-decisions.md` for the full Prisma and TypeORM trade-off.
+The recommended evaluator path uses npm and Docker Compose only.
 
-## Current Status
+## Environment Files
 
-The official challenge scaffold has been imported into this repository root:
+For the challenge delivery, no manual `.env` copy is required.
 
-- `services/games`: NestJS Game Service with DDD domain primitives, application ports/use cases,
-  in-memory round adapter, MikroORM mapping/migration files, internal Wallet HTTP gateway for local
-  debit/credit confirmation, RabbitMQ adapter classes, WebSocket event gateway, crash-point-aware
-  round runner, core REST endpoints, Swagger docs, and domain tests.
-- `services/wallets`: NestJS Wallet Service with DDD wallet domain, application ports/use cases,
-  in-memory wallet and operation adapters, MikroORM mapping/migration files, RabbitMQ consumer/result
-  publisher classes, seed-credit wallet bootstrap, public create/read endpoints, Swagger docs, and
-  domain tests.
-- `docker`: Kong, Keycloak, and PostgreSQL support files.
-- `frontend`: Vite React game UI with TanStack Query hooks for wallet/current round/history/player
-  bets/verification, Zustand, cropped goat run/jump/idle sprites in the mountain scene, and concise
-  browser console telemetry for auth/API/WebSocket/gameplay events.
-- `packages/contracts`: minimal shared RabbitMQ event and socket contract types.
+Docker Compose already loads the tracked service defaults:
 
-Project-specific planning lives in `docs/` and `specs/`.
+- `services/games/.env.example`
+- `services/wallets/.env.example`
 
-The `002-persistence-auth-e2e-hardening` implementation is complete for local challenge delivery.
-Docker/local defaults target PostgreSQL persistence, RabbitMQ wallet effects, and Keycloak auth
-mode. Migrations run automatically through one-shot Compose services before Games and Wallets
-start. MikroORM runtime repositories are wired for both services, Wallet balance/operation writes
-use a single MikroORM transaction, Game restart reconciliation terminalizes stale active rounds
-without deleting player-visible participation, and automated/containerized tests cover the critical
-money/game paths.
+Those files are intentionally committed so a fresh checkout can run immediately. They contain only
+local challenge credentials such as PostgreSQL `admin/admin`, RabbitMQ `admin/admin`, Keycloak local
+settings, and the internal local service token.
 
-Swagger/OpenAPI is exposed at:
+If you need local overrides, create a root `.env` file. It is ignored by Git. Useful root overrides:
 
-- Games: `http://localhost:4001/docs`
-- Wallets: `http://localhost:4002/docs`
+```env
+DEMO_DETERMINISTIC_ROUNDS=false
+DEMO_ROUND_SERVER_SEED=jungle-smoke-seed-2026
+DEMO_ROUND_NONCE=smoke-round
+ROUND_RUNNER_TICK_MS=250
+ROUND_BETTING_TICKS=12
+ROUND_MULTIPLIER_STEP_BPS=750
+WALLET_RESULT_TIMEOUT_MS=25000
+RABBITMQ_CONNECT_ATTEMPTS=180
+RABBITMQ_CONNECT_RETRY_MS=1000
+```
 
-## Local Commands
+For normal evaluation, leave the defaults as they are.
+
+## Fast Evaluator Run
+
+Use this when you want the shortest reliable path to run and validate the project:
 
 ```bash
-bun install
-bun run docker:up
-bun run docker:down
-bun run docker:prune
+npm install
+npm run demo:up
+npm run smoke:api
 ```
 
-If Git Bash does not find Bun after install, use `"$HOME/.bun/bin/bun.exe"` directly or add
-`$HOME/.bun/bin` to your shell PATH.
+Then open:
 
-## Playing Locally
+- Frontend: `http://localhost:3000`
+- Games Swagger: `http://localhost:4001/docs`
+- Wallets Swagger: `http://localhost:4002/docs`
+- Kong gateway: `http://localhost:8000`
+- Keycloak: `http://localhost:8080`
 
-Use the normal Docker path when you want to actually play with natural server-side crash points:
-
-```bash
-bun run docker:up
-```
-
-PowerShell:
-
-```powershell
-bun run docker:up
-```
-
-Then open `http://localhost:3000`, click **Login with Keycloak**, and use:
+Demo login:
 
 - Username: `player`
 - Password: `player123`
+- Realm: `crash-game`
+- Client: `crash-game-client`
 
-This normal play path keeps `DEMO_DETERMINISTIC_ROUNDS=false`, so each round uses the regular
-server-derived seed/nonce path and remains server-authoritative. The Wallet still receives the
-local `seed_credit` bootstrap for the demo user, but bet debit, cashout payout, history, and
-verification all flow through the PostgreSQL/RabbitMQ-backed services.
+## Demo Mode
 
-During the betting window, players can optionally enable auto-cashout and choose a target from
-`1.10x` to `100.00x`. The target is stored with the accepted bet and evaluated by the Game Service;
-the frontend only displays the target/result. Auto-cashout uses the same integer-cent payout math
-and idempotent Wallet payout flow as manual cashout, and crash wins when the target is equal to or
-above the crash point.
-
-Use `npm run demo:up` when you want the evaluator/demo harness and deterministic API smoke. That
-command intentionally enables `DEMO_DETERMINISTIC_ROUNDS=true` for repeatable validation; it is not
-the default gameplay mode.
-
-To inspect local telemetry while playing, open the browser developer console. Frontend events are
-logged as one-line records such as `event=api.request.completed service=frontend ...`,
-`event=socket.event.received service=frontend ...`, and `event=cashout.submit.accepted
-service=frontend ...`.
-
-## Evaluator Demo Commands
-
-Use the demo wrapper when reviewing the challenge locally. It starts or verifies Docker Compose,
-reruns migrations safely, waits for health, and prints URLs plus local credentials:
+Demo mode is the recommended mode for reviewers.
 
 ```bash
 npm run demo:up
 ```
 
-PowerShell uses the same command:
+What it does:
 
-```powershell
-npm.cmd run demo:up
+- Starts the full Docker Compose stack.
+- Enables deterministic rounds for repeatable validation.
+- Runs Games and Wallets migrations safely.
+- Waits for Games, Wallets, Kong, frontend, and Keycloak token readiness.
+- Prints the local URLs and credentials.
+
+In demo mode, the Games service runs with:
+
+```env
+DEMO_DETERMINISTIC_ROUNDS=true
+DEMO_ROUND_SERVER_SEED=jungle-smoke-seed-2026
+DEMO_ROUND_NONCE=smoke-round
 ```
 
-The demo wrapper intentionally starts the Games service with `DEMO_DETERMINISTIC_ROUNDS=true` so
-the API smoke can use a repeatable provably-fair round. The normal `bun run docker:up` path keeps
-`DEMO_DETERMINISTIC_ROUNDS=false`.
+With the default seed and nonce, the deterministic crash point verifies at `4.66x` (`46624` basis
+points). This makes `npm run smoke:api` repeatable.
 
-After the stack is healthy, run the fast API smoke:
+Optional browser smoke after `demo:up`:
 
 ```bash
+npm run smoke:browser
+```
+
+This uses Playwright to validate the real Keycloak authorization-code/PKCE login and the
+authenticated game shell. If Chromium is missing:
+
+```bash
+npx playwright install chromium
+```
+
+## Production-Like Local Mode
+
+Use this mode when you want normal local gameplay with natural server-derived crash points:
+
+```bash
+npm run docker:up
+```
+
+or, if Bun is installed:
+
+```bash
+bun run docker:up
+```
+
+This keeps:
+
+```env
+DEMO_DETERMINISTIC_ROUNDS=false
+```
+
+The stack is still local Docker Compose, but it uses the same production-like service path:
+
+- PostgreSQL persistence.
+- RabbitMQ wallet debit/payout flow.
+- Keycloak browser authentication.
+- Kong gateway routes.
+- Server-authoritative round runner.
+- Automatic migrations before service startup.
+
+Open `http://localhost:3000` and log in with `player` / `player123`.
+
+Keyboard commands:
+
+- `H` opens or closes the command modal.
+- `B` places a bet while betting is open.
+- `C` cashes out during the climb, even if focus is still in the bet or auto-cashout input.
+- `A` toggles auto-cashout before a bet is active.
+- `[` and `]` decrease or increase the bet by R$ 1,00.
+
+## Stop Or Reset
+
+Stop containers while keeping volumes:
+
+```bash
+npm run docker:down
+```
+
+Remove containers, images, and local volumes:
+
+```bash
+npm run docker:prune
+```
+
+Use the prune command only when you want a clean local reset.
+
+## Validation Commands
+
+Core smoke path:
+
+```bash
+npm run demo:up
 npm run smoke:api
+npm run smoke:browser
 ```
 
-PowerShell:
-
-```powershell
-npm.cmd run smoke:api
-```
-
-The smoke acquires a Keycloak token for the local demo user, verifies health, seeds/reads the
-wallet through public routes, places a bet through Kong, cashes out or validates a deterministic
-crash path, checks wallet/history/player-bet state, and recomputes provably fair verification.
-
-Browser PKCE validation remains a manual/optional polish check for this slice:
-
-1. Open `http://localhost:3000`.
-2. Log in through Keycloak with `player` / `player123`.
-3. Confirm the UI shows Keycloak identity, wallet state, round phase, bet/cashout controls,
-   history, verification, and WebSocket status.
-4. Check desktop and mobile widths if visual validation is required.
-
-Useful local URLs:
-
-- Frontend: `http://localhost:3000`
-- Kong: `http://localhost:8000`
-- Games Swagger: `http://localhost:4001/docs`
-- Wallets Swagger: `http://localhost:4002/docs`
-- Keycloak: `http://localhost:8080`
-- Games health: `http://localhost:4001/health` and `http://localhost:8000/games/health`
-- Wallets health: `http://localhost:4002/health` and `http://localhost:8000/wallets/health`
-
-Known startup note: Keycloak can take longer than the other containers on first boot while the realm
-imports. If `demo:up` is still waiting, inspect:
+Useful local checks:
 
 ```bash
-docker compose logs --tail 120 keycloak
-docker compose ps
+npx tsc -p services/games/tsconfig.json --noEmit
+npx tsc -p services/wallets/tsconfig.json --noEmit
+npx tsc -p frontend/tsconfig.json --noEmit
+npm --workspace frontend run test
+npm --workspace frontend run build
+npm --workspace @crash/games run test
+npm --workspace @crash/games run test:e2e
+npm --workspace @crash/wallets run test
+npm --workspace @crash/wallets run test:e2e
+docker compose config --quiet
 ```
 
-PowerShell:
-
-```powershell
-docker compose logs --tail 120 keycloak
-docker compose ps
-```
-
-If Docker is installed but unavailable, start Docker Desktop and retry. A quick diagnostic is:
-
-```bash
-docker compose version
-docker info
-```
-
-Service-level test commands from the scaffold:
+Containerized service tests:
 
 ```bash
 docker compose run --rm games bun test tests/unit
-docker compose run --rm wallets bun test tests/unit
 docker compose run --rm games bun test tests/e2e
+docker compose run --rm wallets bun test tests/unit
 docker compose run --rm wallets bun test tests/e2e
 ```
 
-MikroORM migration commands, once the Docker stack/PostgreSQL are running:
+## Troubleshooting
+
+If `npm run demo:up` says Docker is unavailable, start Docker Desktop and retry.
+
+If Keycloak takes a long time on first boot, inspect:
 
 ```bash
-cd services/games && bun run migration:up
-cd services/wallets && bun run migration:up
-```
-
-From the host PowerShell, override the Docker-only hostname:
-
-```powershell
-$env:POSTGRES_HOST='localhost'
-npm.cmd --workspace @crash/games run migration:up
-npm.cmd --workspace @crash/wallets run migration:up
-Remove-Item Env:\POSTGRES_HOST
-```
-
-In Docker Compose these commands run automatically through `games-migrations` and
-`wallets-migrations`. A first run applies the existing migrations; repeated runs should print
-`Successfully migrated up to the latest version` without reapplying work.
-
-Mini MikroORM workflow:
-
-```bash
-# inspect the service config used by the CLI
-cd services/games
-bun run migration:up
-
-# after changing schema/entity mappings, generate a new migration from that service folder
-bunx mikro-orm migration:create --config src/infrastructure/persistence/mikro-orm/mikro-orm.config.ts
-
-# repeat the same pattern in services/wallets for wallet schema changes
-```
-
-Tracked Docker defaults:
-
-- `PERSISTENCE_ADAPTER=postgres`
-- `WALLET_EFFECT_ADAPTER=rabbitmq`
-- `AUTH_MODE=keycloak`
-
-Explicit dev/smoke modes remain available through env overrides: `PERSISTENCE_ADAPTER=memory`,
-`WALLET_EFFECT_ADAPTER=internal-http|immediate`, and `AUTH_MODE=dev`.
-
-Additional validation used during this implementation slice:
-
-```bash
-npx.cmd tsc -p services/games/tsconfig.json --noEmit
-npx.cmd tsc -p services/wallets/tsconfig.json --noEmit
-npx.cmd tsc -p frontend/tsconfig.json --noEmit
-npm.cmd --workspace frontend run build
-npm.cmd --workspace frontend run test
-docker compose config
-docker compose --progress=plain build games wallets frontend
-docker compose up -d
+docker compose logs --tail 120 keycloak
 docker compose ps
 ```
 
-Keycloak local login:
+If `npm run smoke:browser` cannot reach Keycloak, restart Docker Desktop and run:
 
-- Frontend: `http://localhost:3000`
-- Test user: `player`
-- Test password: `player123`
-- Realm/client: `crash-game` / `crash-game-client`
+```bash
+npm run demo:up
+npm run smoke:browser
+```
 
-The normal UI path is Keycloak. The local `x-player-id` fallback only works when services/frontend
-are intentionally started with `AUTH_MODE=dev` / `VITE_AUTH_MODE=dev`, and the UI labels that mode
-as `Dev identity`.
+If ports are already in use, free these local ports before starting the stack:
+
+- `3000` frontend
+- `4001` Games
+- `4002` Wallets
+- `5432` PostgreSQL
+- `5672` RabbitMQ
+- `8000`, `8001`, `8443` Kong
+- `8080` Keycloak
+- `15672` RabbitMQ management
 
 ## Documentation Map
 
-- `docs/overview.md`: product overview and player flow.
-- `docs/vision.md`: target outcome and principles.
-- `docs/architecture.md`: stack, DDD layering, service boundaries, and state strategy.
-- `docs/domain-model.md`: entities, value objects, lifecycle, and invariants.
-- `docs/reference-ui.md`: goat/mountain UI direction.
-- `docs/architecture-decisions.md`: accepted architecture decisions and trade-offs.
-- `docs/roadmap.md`: phased delivery plan.
-- `docs/handoff.md`: current status and next work.
-- `docs/next-spec-prompt.md`: command-ready prompt for the next `/speckit-specify`.
+- `docs/overview.md`: product overview.
+- `docs/architecture.md`: stack and service architecture.
+- `docs/domain-model.md`: domain entities, values, and invariants.
+- `docs/architecture-decisions.md`: architectural trade-offs.
+- `docs/handoff.md`: current delivery status and validation notes.
+- `docs/roadmap.md`: completed phases and deferred work.
+- `docs/next-spec-prompt.md`: optional next Spec Kit prompt.
+
+## Known Deferred Work
+
+This project is ready for local challenge review, but not a hosted production deployment. Deferred
+items include transactional outbox/inbox, broader Playwright regression coverage, deeper
+observability, sound effects, and hosted deployment hardening.

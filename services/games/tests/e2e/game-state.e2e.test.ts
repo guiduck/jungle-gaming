@@ -6,11 +6,20 @@ import type {
   GameEventPublisher,
   GameWalletGateway,
   IdGenerator,
+  LeaderboardEntry,
+  LeaderboardMetric,
+  PlayerBetHistoryEntry,
   RoundRepository,
+  RoundHistorySummary,
   WalletEffectRequest,
   WalletEffectResult,
   WalletPayoutRequest,
 } from "../../src/application/ports/game-ports";
+import {
+  toLeaderboard,
+  toPlayerBetHistory,
+  toRoundHistorySummary,
+} from "../../src/application/round-read-models";
 import { CrashPoint, ProvablyFair, Round } from "../../src/domain";
 import type { RoundSnapshot } from "../../src/domain";
 
@@ -26,6 +35,26 @@ describe("Game money and persistence flows", () => {
     expect(gateway.debits).toHaveLength(1);
   });
 
+  test("marks the accepted player bet ready before automatic start", async () => {
+    const events = new RecordingEvents();
+    const service = createService({ events });
+
+    const placed = await service.placeBet("player-1", 250);
+    expect(placed.bets[0]?.ready).toBe(false);
+
+    const ready = await service.markBetReady("player-1");
+
+    expect(ready.bets[0]?.ready).toBe(true);
+    expect(events.events).toContainEqual({
+      eventName: "bet.ready",
+      payload: {
+        roundId: "round-1",
+        playerId: "player-1",
+        round: expect.objectContaining({ id: "round-1", status: "betting" }),
+      },
+    });
+  });
+
   test("does not accept a bet when wallet confirmation times out", async () => {
     const service = createService({
       gateway: new FakeWalletGateway({ status: "timeout", idempotencyKey: "" }),
@@ -33,6 +62,23 @@ describe("Game money and persistence flows", () => {
 
     await expect(service.placeBet("player-1", 250)).rejects.toThrow("timed out");
     expect((await service.getCurrentRound()).bets).toHaveLength(0);
+  });
+
+  test("refunds debit confirmation when betting window closes before bet persistence", async () => {
+    const repository = new FakeRoundRepository([createRound("round-late", "betting")]);
+    const gateway = new FakeWalletGateway({ status: "accepted", idempotencyKey: "" });
+    gateway.afterDebitRequest = async () => {
+      const round = await repository.getCurrent();
+      round.start();
+      await repository.saveCurrent(round);
+    };
+    const service = createService({ repository, gateway });
+
+    await expect(service.placeBet("player-1", 250)).rejects.toThrow("debit refunded");
+    expect((await service.getCurrentRound()).bets).toHaveLength(0);
+    expect(gateway.payouts).toHaveLength(1);
+    expect(gateway.payouts[0]?.idempotencyKey).toBe("bet-refund:round-late:player-1");
+    expect(gateway.payouts[0]?.amountCents).toBe(250);
   });
 
   test("rejects insufficient balance, duplicate bet, invalid phase, and invalid amount", async () => {
@@ -133,6 +179,33 @@ describe("Game money and persistence flows", () => {
     expect(gateway.payouts).toHaveLength(1);
     expect(gateway.payouts[0]?.idempotencyKey).toBe("payout-credit:round-auto:bet-player-1-1");
   });
+
+  test("publishes round snapshots for realtime phase transitions", async () => {
+    const events = new RecordingEvents();
+    const service = createService({ events });
+
+    const started = await service.startRound();
+    expect(started.status).toBe("running");
+    expect(events.events).toContainEqual({
+      eventName: "round.started",
+      payload: {
+        roundId: "round-1",
+        round: expect.objectContaining({ id: "round-1", status: "running" }),
+      },
+    });
+
+    await service.crashRound();
+    const next = await service.settleAndCreateNextRound();
+
+    expect(next.status).toBe("betting");
+    expect(events.events).toContainEqual({
+      eventName: "round.betting.opened",
+      payload: {
+        roundId: "round-2",
+        round: expect.objectContaining({ id: "round-2", status: "betting" }),
+      },
+    });
+  });
 });
 
 class FakeRoundRepository implements RoundRepository {
@@ -184,6 +257,50 @@ class FakeRoundRepository implements RoundRepository {
       .slice(-limit)
       .reverse();
   }
+
+  async getRoundHistorySummaries(limit: number): Promise<RoundHistorySummary[]> {
+    return this.completed
+      .map((completed) => ({
+        round: this.activeRounds.find((round) => round.id === completed.id)?.toSnapshot(),
+        completed,
+      }))
+      .filter((input): input is { round: RoundSnapshot; completed: CompletedRoundRecord } =>
+        input.round !== undefined
+      )
+      .slice(-limit)
+      .reverse()
+      .map((input) => toRoundHistorySummary(input));
+  }
+
+  async getLeaderboard(limit: number, metric: LeaderboardMetric): Promise<LeaderboardEntry[]> {
+    return toLeaderboard(
+      this.completed
+        .map((completed) => ({
+          round: this.activeRounds.find((round) => round.id === completed.id)?.toSnapshot(),
+          completed,
+        }))
+        .filter((input): input is { round: RoundSnapshot; completed: CompletedRoundRecord } =>
+          input.round !== undefined
+        ),
+      limit,
+      metric,
+    );
+  }
+
+  async getPlayerBetHistory(
+    playerId: string,
+    limit: number,
+  ): Promise<PlayerBetHistoryEntry[]> {
+    const completedByRoundId = new Map(this.completed.map((round) => [round.id, round]));
+    return toPlayerBetHistory(
+      this.activeRounds
+        .map((round) => round.toSnapshot())
+        .reverse()
+        .map((round) => ({ round, completed: completedByRoundId.get(round.id) })),
+      playerId,
+      limit,
+    );
+  }
 }
 
 class RecordingEvents implements GameEventPublisher {
@@ -197,11 +314,13 @@ class RecordingEvents implements GameEventPublisher {
 class FakeWalletGateway implements GameWalletGateway {
   readonly debits: WalletEffectRequest[] = [];
   readonly payouts: WalletPayoutRequest[] = [];
+  afterDebitRequest?: () => void | Promise<void>;
 
   constructor(private readonly result: WalletEffectResult = { status: "accepted", idempotencyKey: "" }) {}
 
   async requestBetDebit(request: WalletEffectRequest): Promise<WalletEffectResult> {
     this.debits.push(request);
+    await this.afterDebitRequest?.();
     return { ...this.result, idempotencyKey: request.idempotencyKey };
   }
 

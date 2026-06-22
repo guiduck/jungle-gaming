@@ -13,6 +13,7 @@ export interface BetSnapshot {
   playerId: string;
   amountCents: number;
   status: BetStatus;
+  ready?: boolean;
   cashoutMultiplierBps?: number;
   payoutCents?: number;
   autoCashoutMultiplierBps?: number;
@@ -21,6 +22,7 @@ export interface BetSnapshot {
 
 export class Bet {
   private statusValue: BetStatus = "pending";
+  private readyValue = false;
   private cashoutMultiplierValue?: number;
   private payoutValue?: Money;
   private cashoutTriggerValue?: CashoutTrigger;
@@ -55,6 +57,7 @@ export class Bet {
       snapshot.autoCashoutMultiplierBps,
     );
     bet.statusValue = snapshot.status;
+    bet.readyValue = snapshot.ready ?? false;
     bet.cashoutMultiplierValue = snapshot.cashoutMultiplierBps;
     bet.cashoutTriggerValue = snapshot.cashoutTrigger;
     bet.payoutValue =
@@ -66,8 +69,20 @@ export class Bet {
     return this.statusValue;
   }
 
+  get ready(): boolean {
+    return this.readyValue;
+  }
+
   get autoCashoutMultiplierBps(): number | undefined {
     return this.autoCashoutMultiplierValue;
+  }
+
+  markReady(): void {
+    if (this.statusValue !== "pending") {
+      throw new DomainError("Only pending bets can be marked ready");
+    }
+
+    this.readyValue = true;
   }
 
   cashOut(multiplierBps: number, trigger: CashoutTrigger = "manual"): Money {
@@ -123,6 +138,7 @@ export class Bet {
       playerId: this.playerId.value,
       amountCents: this.amount.cents,
       status: this.statusValue,
+      ready: this.readyValue,
       cashoutMultiplierBps: this.cashoutMultiplierValue,
       payoutCents: this.payoutValue?.cents,
       autoCashoutMultiplierBps: this.autoCashoutMultiplierValue,

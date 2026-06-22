@@ -2,9 +2,9 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/commo
 import { GameStateService } from "./game-state.service";
 import { formatLogEvent } from "../infrastructure/system/log-event";
 
-const TICK_MS = Number(process.env.ROUND_RUNNER_TICK_MS ?? 1000);
-const BETTING_TICKS = Number(process.env.ROUND_BETTING_TICKS ?? 5);
-const MULTIPLIER_STEP_BPS = Number(process.env.ROUND_MULTIPLIER_STEP_BPS ?? 500);
+const TICK_MS = Number(process.env.ROUND_RUNNER_TICK_MS ?? 250);
+const BETTING_TICKS = Number(process.env.ROUND_BETTING_TICKS ?? 12);
+const MULTIPLIER_STEP_BPS = Number(process.env.ROUND_MULTIPLIER_STEP_BPS ?? 750);
 
 @Injectable()
 export class RoundRunnerService implements OnModuleInit, OnModuleDestroy {
@@ -13,6 +13,7 @@ export class RoundRunnerService implements OnModuleInit, OnModuleDestroy {
   private ticksInPhase = 0;
   private runningMultiplierBps = 10000;
   private ticking = false;
+  private waitingReadyRoundId?: string;
 
   constructor(private readonly gameState: GameStateService) {}
 
@@ -50,14 +51,24 @@ export class RoundRunnerService implements OnModuleInit, OnModuleDestroy {
       this.ticksInPhase += 1;
 
       if (round.status === "betting" && this.ticksInPhase >= BETTING_TICKS) {
+        if (!canStartAfterBettingWindow(round)) {
+          if (this.waitingReadyRoundId !== round.id) {
+            this.logger.log(formatLogEvent("round.betting.waiting_ready", { roundId: round.id }));
+            this.waitingReadyRoundId = round.id;
+          }
+          return;
+        }
+
         this.logger.log(formatLogEvent("round.betting.closed", { roundId: round.id }));
         await this.gameState.startRound();
         this.runningMultiplierBps = 10000;
         this.ticksInPhase = 0;
+        this.waitingReadyRoundId = undefined;
         return;
       }
 
       if (round.status === "running") {
+        this.waitingReadyRoundId = undefined;
         this.runningMultiplierBps = Math.min(
           round.crashMultiplierBps,
           this.runningMultiplierBps + MULTIPLIER_STEP_BPS,
@@ -85,4 +96,9 @@ export class RoundRunnerService implements OnModuleInit, OnModuleDestroy {
       this.ticking = false;
     }
   }
+}
+
+function canStartAfterBettingWindow(round: Awaited<ReturnType<GameStateService["getCurrentRound"]>>): boolean {
+  const pendingBets = round.bets.filter((bet) => bet.status === "pending");
+  return pendingBets.length === 0 || pendingBets.every((bet) => bet.ready);
 }

@@ -93,6 +93,25 @@ export class Round {
     this.statusValue = "running";
   }
 
+  markPlayerReady(playerId: PlayerId): void {
+    if (this.statusValue !== "betting") {
+      throw new DomainError("Round is not accepting ready confirmations");
+    }
+
+    const bet = this.bets.find((candidate) => candidate.belongsTo(playerId));
+
+    if (!bet) {
+      throw new DomainError("Player has no bet in this round");
+    }
+
+    bet.markReady();
+  }
+
+  canStartAfterBettingWindow(): boolean {
+    const pendingBets = this.bets.filter((bet) => bet.status === "pending");
+    return pendingBets.length === 0 || pendingBets.every((bet) => bet.ready);
+  }
+
   cashOut(playerId: PlayerId, multiplierBps: number, trigger: CashoutTrigger = "manual"): Money {
     if (this.statusValue !== "running") {
       throw new DomainError("Round is not running");

@@ -18,13 +18,20 @@ server-supplied `displayedMultiplierBps`; it must not become gameplay truth.
 
 ## Existing Artifact Alignment
 
-No conflict was found with the completed specs or current docs:
+No blocking conflict was found with the completed specs or current docs:
 
-- `docs/vision.md` states that the goat climbing a mountain is the visual identity of the game.
-- `docs/reference-ui.md` says the crash graph is represented as a mountain climb while the
-  multiplier remains numerically prominent.
+- `README.md` and `docs/overview.md` state that the goat climbing a mountain is the visual identity
+  of the game.
+- `docs/vision.md` frames the goat/mountain animation as the frontend identity rather than a
+  generic graph demo.
+- `docs/reference-ui.md` says the next production polish pass should map `displayedMultiplierBps`
+  to a crash-style curve point and rotate the goat to the local tangent while keeping the numeric
+  multiplier prominent.
 - `docs/architecture-decisions.md` ADR-008 explicitly deferred a curve-based mountain and goat
-  tangent rotation until after persistence, auth, and e2e confidence.
+  tangent rotation until after persistence, auth, e2e confidence, operational polish, and
+  server-authoritative auto-cashout.
+- `docs/handoff.md` and `docs/roadmap.md` identify this feature as the selected next Phase 4 slice
+  and preserve the same frontend-only projection constraint.
 - `specs/001-gameplay-foundation/` allowed placeholder goat/mountain visuals for the MVP.
 - `specs/002-persistence-auth-e2e-hardening/`, `specs/003-challenge-polish-operational-confidence/`,
   and `specs/004-server-authoritative-auto-cashout/` completed the server-authoritative foundation
@@ -34,6 +41,9 @@ This spec intentionally supersedes the previously suggested leaderboard/richer-h
 the next Phase 4 slice because it closes a documented product-identity gap.
 
 ## Clarifications
+
+Clarification pass completed on 2026-06-21. The following answers are encoded so planning can
+proceed without reopening visual-scope questions:
 
 - This slice is visual/projection only. It does not change crash-point generation, server runner
   math, multiplier basis-point representation, cashout boundaries, auto-cashout evaluation, payout
@@ -45,10 +55,15 @@ the next Phase 4 slice because it closes a documented product-identity gap.
 - The visual must use a deterministic pure helper so its math is unit-testable without rendering.
 - The goat angle must come from the tangent/slope of the same curve used for the goat position.
 - The multiplier text remains the primary accessible representation of the game state.
-- The path may be rendered as SVG or CSS-generated geometry, but the implementation must remain
-  maintainable and responsive.
+- The procedural trail must communicate forward motion in the existing mountain scene and satisfy
+  ADR-008's direction that the path reveals as the goat advances, with a right-to-left reveal
+  treatment.
+- SVG/CSS is the intended first implementation approach. Canvas/WebGL remains out of scope unless
+  planning discovers a concrete limitation that prevents a responsive, inspectable SVG/CSS path.
 - The existing goat sprite assets under `frontend/public/assets/goat/` remain replaceable and must
   not be distorted beyond rotation/positioning needed for the climb.
+- `visualMaxMultiplier`, curve bounds, sample count, and angle clamps are frontend visual constants,
+  not server configuration and not persisted user settings.
 
 ## Visual Curve Model
 
@@ -88,6 +103,22 @@ angleDeg = atan2(frameHeight * dy/dx, frameWidth) in degrees
 
 Clamp the final goat angle to a readable range, such as `-8deg` through `42deg`, so the sprite
 feels angled on the mountain without becoming visually broken.
+
+The exact constants may be tuned during planning/implementation, but the mapping must remain
+documented in code, deterministic, monotonic for the visible climb, and independent from backend
+gameplay math.
+
+Clarified visual defaults:
+
+- `visualMaxMultiplier` should start at `3.00x` unless planning proves the current scene needs a
+  different local-demo-friendly ceiling.
+- The path should be sampled from the same projection helper, not hand-authored independently in
+  component markup or CSS.
+- The visible trail may include the full route and an emphasized progressed segment, but the
+  progressed segment must reveal consistently from the right side of the mountain scene toward the
+  goat position as required by ADR-008.
+- If the goat reaches a clamped summit for multipliers above the visual ceiling, the multiplier
+  text continues increasing from `displayedMultiplierBps`; only the visual position/angle clamps.
 
 ## User Stories and Acceptance Criteria
 
@@ -136,6 +167,36 @@ Acceptance criteria:
 - Given the scene is rendered without JavaScript animation timing assumptions, the current state can
   still be reconstructed from `displayedMultiplierBps` alone.
 
+### User Story 4: Accessible Multiplier Remains the Source of Player Readability
+
+As a player, I want the multiplier text and phase state to remain easy to read while the goat moves
+so the visual polish never hides the actual game state.
+
+Acceptance criteria:
+
+- Given the scene is running, the multiplier remains visually prominent and is not covered by the
+  goat, mountain path, wallet panel, bet controls, history, or status text.
+- Given a screen reader user reaches the scene, the scene exposes a concise accessible label and the
+  multiplier text remains available as text rather than only as decoration.
+- Given reduced viewport width, text wraps or reflows without overlapping controls or being clipped
+  inside fixed-size UI elements.
+- Given the visual projection disagrees with player intuition, the numeric multiplier remains the
+  authoritative visible cue for the current round projection.
+
+### User Story 5: Visual-Only Compatibility Is Preserved
+
+As an evaluator, I want this polish to avoid backend and contract changes so existing server
+authority, cashout, auto-cashout, wallet, auth, persistence, and smoke validation remain stable.
+
+Acceptance criteria:
+
+- Given the implementation is complete, no public REST/WebSocket contract changes are required for
+  the visual curve.
+- Given manual or auto cashout is evaluated, the result is still determined by the Game Service and
+  Wallet flows, not by the visual helper.
+- Given `npm run smoke:api` runs, the deterministic evaluator smoke remains valid without needing
+  visual-specific backend setup.
+
 ## Functional Requirements
 
 - **FR-001**: The frontend must add a pure helper that maps integer `multiplierBps` to curve
@@ -155,6 +216,12 @@ Acceptance criteria:
   schemas.
 - **FR-008**: The implementation must keep the normal local gameplay path `bun run docker:up` and
   deterministic evaluator path `npm run demo:up` / `npm run smoke:api` working.
+- **FR-009**: The implementation must include validation notes for desktop and mobile visual checks,
+  including whether screenshots or browser verification were used.
+- **FR-010**: Implementation closeout must update affected documentation, including
+  `docs/handoff.md`, `docs/roadmap.md`, and `docs/next-spec-prompt.md`.
+- **FR-011**: The procedural trail must support ADR-008's right-to-left reveal direction while using
+  the same curve samples as goat positioning.
 
 ## Data and State Requirements
 
@@ -166,6 +233,7 @@ Acceptance criteria:
   - current round status from server snapshots/WebSocket events
 - Any visual constants, such as `visualMaxMultiplier`, frame bounds, and angle clamp, should live in
   frontend code near the helper and be easy to tune.
+- Visual constants must not be fetched from or written to backend APIs.
 
 ## Edge Cases
 
@@ -186,6 +254,10 @@ Acceptance criteria:
 - No new leaderboard, richer history, social identity, or Storybook scope in this slice.
 - No full redesign of the app layout or casino theme.
 - No reliance on canvas or WebGL unless later planning proves SVG/CSS is insufficient.
+- No change to goat sprite asset production beyond preserving the current idle/run/jump states and
+  applying curve-based position/rotation.
+- No new runtime dependency solely for curve math or SVG path generation unless planning identifies
+  a concrete maintainability or correctness benefit.
 
 ## Success Criteria
 

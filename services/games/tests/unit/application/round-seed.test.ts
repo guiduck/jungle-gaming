@@ -32,7 +32,7 @@ describe("round seed selection", () => {
     );
 
     expect(isDemoDeterministicRoundsEnabled()).toBe(true);
-    expect(round.crashPoint.multiplierBps).toBe(16332);
+    expect(round.crashPoint.multiplierBps).toBe(46624);
     expect(
       ProvablyFair.verify(
         round.serverSeed,

@@ -1,19 +1,32 @@
-import type { CompletedRound, ItemsResponse, Round, Wallet } from "../types";
-import { getAccessToken, getPlayerId, isDevAuthMode } from "./auth";
+import type {
+  CompletedRound,
+  ItemsResponse,
+  LeaderboardResponse,
+  PlayerBetHistoryEntry,
+  Round,
+  RoundHistorySummary,
+  Wallet,
+} from "../types";
+import { clearAccessToken, getAccessToken, notifyAuthRequired } from "./auth";
 import { logFrontendEvent } from "./telemetry";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 export const SOCKET_URL = API_URL;
+export const SOCKET_PATH = import.meta.env.VITE_SOCKET_PATH ?? defaultSocketPath(API_URL);
+
+function defaultSocketPath(apiUrl: string): string {
+  try {
+    return new URL(apiUrl).port === "4001" ? "/socket" : "/games/socket";
+  } catch {
+    return "/games/socket";
+  }
+}
 
 async function request<T extends object>(path: string, init?: RequestInit): Promise<T> {
   const token = getAccessToken();
   const method = init?.method ?? "GET";
   const headers = new Headers(init?.headers);
   headers.set("content-type", "application/json");
-
-  if (isDevAuthMode()) {
-    headers.set("x-player-id", getPlayerId());
-  }
 
   if (token) {
     headers.set("authorization", `Bearer ${token}`);
@@ -22,7 +35,7 @@ async function request<T extends object>(path: string, init?: RequestInit): Prom
   logFrontendEvent("api.request.started", {
     method,
     path,
-    authMode: isDevAuthMode() ? "dev" : "keycloak",
+    authMode: "keycloak",
   });
 
   let response: Response;
@@ -46,17 +59,24 @@ async function request<T extends object>(path: string, init?: RequestInit): Prom
 
   if (!response.ok) {
     const error = (await response.json().catch(() => null)) as { message?: string } | null;
+    const reason = error?.message ?? `Request failed: ${response.status}`;
     logFrontendEvent(
       "api.request.rejected",
       {
         method,
         path,
         status: response.status,
-        reason: error?.message,
+        reason,
       },
       "warn",
     );
-    throw new Error(error?.message ?? `Request failed: ${response.status}`);
+
+    if (response.status === 401) {
+      clearAccessToken();
+      notifyAuthRequired(reason);
+    }
+
+    throw new Error(reason);
   }
 
   const data = (await response.json()) as T | { error?: string };
@@ -79,16 +99,27 @@ export async function getCurrentRound(): Promise<Round> {
   return request<Round>("/games/rounds/current");
 }
 
-export async function getRoundHistory(): Promise<ItemsResponse<CompletedRound>> {
-  return request<ItemsResponse<CompletedRound>>("/games/rounds/history");
+export async function getRoundHistory(): Promise<ItemsResponse<RoundHistorySummary>> {
+  return request<ItemsResponse<RoundHistorySummary>>("/games/rounds/history");
 }
 
 export async function getRoundVerification(roundId: string): Promise<CompletedRound> {
   return request<CompletedRound>(`/games/rounds/${roundId}/verify`);
 }
 
-export async function getMyBets(): Promise<ItemsResponse<Round>> {
-  return request<ItemsResponse<Round>>("/games/bets/me");
+export async function getLeaderboard(
+  metric: "payout" | "multiplier" = "payout",
+  limit?: number,
+): Promise<LeaderboardResponse> {
+  const params = new URLSearchParams({ metric });
+  if (limit !== undefined) {
+    params.set("limit", String(limit));
+  }
+  return request<LeaderboardResponse>(`/games/leaderboard?${params.toString()}`);
+}
+
+export async function getMyBets(): Promise<ItemsResponse<PlayerBetHistoryEntry>> {
+  return request<ItemsResponse<PlayerBetHistoryEntry>>("/games/bets/me");
 }
 
 export async function getWallet(): Promise<Wallet> {
@@ -119,6 +150,10 @@ export async function cashOut(multiplierBps: number): Promise<Round> {
     method: "POST",
     body: JSON.stringify({ multiplierBps }),
   });
+}
+
+export async function markBetReady(): Promise<Round> {
+  return request<Round>("/games/bet/ready", { method: "POST", body: "{}" });
 }
 
 export async function startRound(): Promise<Round> {

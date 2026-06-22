@@ -63,8 +63,14 @@ experiencia de forma fluida.
 - TanStack Query: carteira, historico de rodadas, snapshot da rodada atual, historico de apostas do
   jogador e requisicoes de verificacao.
 - Zustand: fase atual, multiplicador exibido, countdown, apostas visiveis, status da aposta do
-  jogador, status do WebSocket e flags de animacao da cabra/montanha.
+  jogador, status do WebSocket, flags de animacao da cabra/montanha e estado do sistema de
+  dialogos/onboarding.
 - REST: acoes do jogador, como apostar e sacar.
+- REST read models: `GET /games/rounds/history` retorna historico enriquecido de rodadas
+  completadas, `GET /games/leaderboard` retorna ranking somente-leitura de cashouts realizados, e
+  `GET /games/bets/me` retorna historico da aposta do jogador autenticado com contexto da rodada.
+  Esses endpoints leem apenas dados autoritativos persistidos de `Round`/`Bet`; nao disparam
+  debito, credito, cashout, liquidacao, eventos RabbitMQ ou eventos WebSocket novos.
 - WebSocket: atualizacoes servidor-cliente, como janela de apostas aberta, rodada iniciada, tick de
   multiplicador, aposta aceita, cashout aceito, rodada crashada e liquidacao concluida.
 - Auto cashout: configuracao opcional enviada no `POST /games/bet` como
@@ -107,6 +113,16 @@ Para jogar localmente como usuario, use o caminho normal `bun run docker:up`, ab
 nao fica presa a seed fixa de smoke: o Game Service usa o caminho regular de seed/nonce derivado do
 round, e o frontend apenas projeta estado autoritativo vindo do backend.
 
+O frontend agora apresenta uma tela propria de boas-vindas/login antes de iniciar esse redirect. A
+aplicacao nao captura senha do Keycloak diretamente; o botao de login apenas inicia o fluxo OIDC
+authorization code com PKCE, mantendo Keycloak como identity provider e reduzindo a exposicao da
+tela padrao do provedor para uma etapa tecnica.
+
+O onboarding visual-novel e implementado no frontend com Zustand. Ele guarda flags locais de
+boas-vindas/tutorial concluido, controla fila de falas com efeito typewriter, dispara o modal de
+comandos ao fim do tutorial e permite mensagens amigaveis por fase sem afetar REST, WebSocket,
+Wallet, crash point, payout ou persistencia.
+
 Quando o modo demo deterministico esta ativo, a escolha de seed/nonce da proxima rodada usa valores
 locais de demo, mas a regra de crash continua sendo a mesma: compromisso SHA-256, derivacao
 HMAC-SHA256, multiplicador em basis points e verificacao posterior pelo endpoint de verify. O modo
@@ -131,3 +147,9 @@ Nota de auto cashout: o alvo automatico e um dado da aposta, nao uma preferencia
 frontend. O payout continua sendo calculado no dominio Game com centavos inteiros e multiplicador em
 basis points; o Wallet recebe o mesmo fluxo idempotente de credito de payout usado por cashout
 manual.
+
+Nota de leaderboard/historico: a leitura de ranking e historico usa projecoes simples sobre as
+rodadas completadas e apostas persistidas. O ranking padrao e por `payout` realizado; a alternativa
+`multiplier` usa o multiplicador de cashout. Ambos usam desempates deterministicos e ignoram apostas
+pendentes/perdidas, rodadas ativas e seeds ainda nao reveladas. Nenhuma tabela materializada ou
+migracao nova foi adicionada nesta fatia.

@@ -7,6 +7,7 @@ import type {
   WalletPayoutRequest,
 } from "../../application/ports/game-ports";
 import { formatLogEvent } from "../system/log-event";
+import { connectRabbitMq } from "./rabbitmq-connection";
 
 const REQUEST_EXCHANGE = "wallet.requests";
 const RESULT_EXCHANGE = "wallet.results";
@@ -155,7 +156,7 @@ export class RabbitMqGameWalletGateway implements GameWalletGateway, OnModuleDes
       return this.channel;
     }
 
-    this.connection = await amqp.connect(process.env.RABBITMQ_URL ?? "amqp://admin:admin@rabbitmq:5672");
+    this.connection = await connectRabbitMq(this.logger, "games.wallet_gateway");
     this.channel = await this.connection.createChannel();
     return this.channel;
   }

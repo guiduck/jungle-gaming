@@ -9,11 +9,13 @@
   "scripts": {
     "demo:up": "node scripts/demo-up.cjs",
     "smoke:api": "node scripts/smoke-api.cjs",
+    "smoke:browser": "node scripts/smoke-browser.cjs",
     "docker:up": "docker compose up",
     "docker:down": "docker compose down",
     "docker:prune": "docker compose down -v --rmi all --remove-orphans && docker volume prune -f"
   },
   "devDependencies": {
-    "bun-types": "latest"
+    "bun-types": "latest",
+    "playwright": "^1.61.0"
   }
 }

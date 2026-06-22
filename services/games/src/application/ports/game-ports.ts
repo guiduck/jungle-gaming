@@ -1,4 +1,5 @@
 import type { Round, RoundSnapshot } from "../../domain";
+import type { BetStatus, CashoutTrigger } from "../../domain";
 
 export const ROUND_REPOSITORY = Symbol("ROUND_REPOSITORY");
 export const GAME_EVENT_PUBLISHER = Symbol("GAME_EVENT_PUBLISHER");
@@ -24,6 +25,60 @@ export interface CompletedRoundRecord {
   crashedAt: string;
 }
 
+export type LeaderboardMetric = "payout" | "multiplier";
+
+export interface RoundNotableBet {
+  betId: string;
+  playerId: string;
+  amountCents: number;
+  status: BetStatus;
+  cashoutMultiplierBps?: number;
+  payoutCents?: number;
+  autoCashoutMultiplierBps?: number;
+  cashoutTrigger?: CashoutTrigger;
+}
+
+export interface RoundHistorySummary {
+  id: string;
+  crashMultiplierBps: number;
+  crashedAt: string;
+  settledAt?: string;
+  acceptedBetCount: number;
+  cashedOutBetCount: number;
+  lostBetCount: number;
+  totalWageredCents: number;
+  totalPayoutCents: number;
+  verificationAvailable: boolean;
+  notableBets: RoundNotableBet[];
+}
+
+export interface LeaderboardEntry {
+  rank: number;
+  playerId: string;
+  roundId: string;
+  betId: string;
+  amountCents: number;
+  payoutCents: number;
+  cashoutMultiplierBps: number;
+  cashoutTrigger?: CashoutTrigger;
+  autoCashoutMultiplierBps?: number;
+  crashMultiplierBps: number;
+  crashedAt: string;
+}
+
+export interface PlayerBetHistoryEntry {
+  roundId: string;
+  betId: string;
+  amountCents: number;
+  status: BetStatus;
+  crashMultiplierBps: number;
+  autoCashoutMultiplierBps?: number;
+  cashoutMultiplierBps?: number;
+  payoutCents?: number;
+  cashoutTrigger?: CashoutTrigger;
+  crashedAt?: string;
+}
+
 export interface RoundRepository {
   getCurrent(): Promise<Round>;
   getActive(): Promise<Round[]>;
@@ -33,6 +88,9 @@ export interface RoundRepository {
   getHistory(limit: number): Promise<CompletedRoundRecord[]>;
   getCompleted(roundId: string): Promise<CompletedRoundRecord | undefined>;
   getPlayerRoundSnapshots(playerId: string, limit: number): Promise<RoundSnapshot[]>;
+  getRoundHistorySummaries(limit: number): Promise<RoundHistorySummary[]>;
+  getLeaderboard(limit: number, metric: LeaderboardMetric): Promise<LeaderboardEntry[]>;
+  getPlayerBetHistory(playerId: string, limit: number): Promise<PlayerBetHistoryEntry[]>;
 }
 
 export interface GameEventPublisher {

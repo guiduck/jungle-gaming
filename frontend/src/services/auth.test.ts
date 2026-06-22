@@ -3,11 +3,7 @@ import { getWallet } from "./api";
 import {
   getAccessToken,
   getCurrentPlayerId,
-  getAuthMode,
-  getPlayerId,
-  isDevAuthMode,
   setAccessToken,
-  setPlayerId,
 } from "./auth";
 
 function installLocalStorage(): void {
@@ -26,36 +22,27 @@ describe("auth helpers", () => {
     vi.restoreAllMocks();
   });
 
-  test("defaults to the local smoke player", () => {
-    expect(getPlayerId()).toBe("player");
+  test("has no browser player id before Keycloak token is stored", () => {
+    expect(getCurrentPlayerId()).toBe("");
   });
 
-  test("stores player id and optional access token", () => {
-    setPlayerId("alice");
+  test("stores optional access token", () => {
     setAccessToken("token");
 
-    expect(getPlayerId()).toBe("alice");
     expect(getAccessToken()).toBe("token");
   });
 
   test("uses the bearer token subject as the Keycloak player id", () => {
-    setPlayerId("local-player");
     setAccessToken(jwtWithSubject("keycloak-subject"));
 
     expect(getCurrentPlayerId()).toBe("keycloak-subject");
   });
 
-  test("uses the local player id in explicit dev mode", () => {
+  test("ignores VITE_AUTH_MODE dev for browser player identity", () => {
     vi.stubEnv("VITE_AUTH_MODE", "dev");
-    setPlayerId("dev-player");
     setAccessToken(jwtWithSubject("keycloak-subject"));
 
-    expect(getCurrentPlayerId()).toBe("dev-player");
-  });
-
-  test("defaults to Keycloak auth mode", () => {
-    expect(getAuthMode()).toBe("keycloak");
-    expect(isDevAuthMode()).toBe(false);
+    expect(getCurrentPlayerId()).toBe("keycloak-subject");
   });
 
   test("attaches bearer token in Keycloak mode without dev identity header", async () => {
@@ -72,9 +59,8 @@ describe("auth helpers", () => {
     expect(headers.has("x-player-id")).toBe(false);
   });
 
-  test("attaches x-player-id only in explicit dev mode", async () => {
+  test("does not attach dev identity headers when VITE_AUTH_MODE is dev", async () => {
     vi.stubEnv("VITE_AUTH_MODE", "dev");
-    setPlayerId("dev-player");
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
       new Response(JSON.stringify({ id: "wallet" })),
     );
@@ -83,7 +69,7 @@ describe("auth helpers", () => {
     await getWallet();
 
     const headers = (fetchMock.mock.calls[0]?.[1] as RequestInit).headers as Headers;
-    expect(headers.get("x-player-id")).toBe("dev-player");
+    expect(headers.has("x-player-id")).toBe(false);
     expect(headers.has("authorization")).toBe(false);
   });
 });

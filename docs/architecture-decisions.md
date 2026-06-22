@@ -166,6 +166,9 @@ Consequencias:
 
 - Chaves de idempotencia sao obrigatorias para debitos de aposta e creditos de payout.
 - Timeout nao deve criar apostas aceitas.
+- Confirmacoes de debito que chegam depois da janela de aposta sao revalidadas contra a rodada
+  atual; se a rodada ja fechou, o Game solicita um credito de devolucao idempotente em vez de
+  persistir uma aposta atrasada.
 - A UI pode retentar e reconciliar a partir de snapshots/eventos sem duplicar efeitos de carteira.
 
 ## ADR-007: Usar Gateway HTTP Interno de Wallet para Smoke Local de Gameplay

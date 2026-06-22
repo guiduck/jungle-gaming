@@ -18,6 +18,18 @@ describe("Round and Bet", () => {
     );
   });
 
+  test("waits for accepted bettors to mark ready before automatic start", () => {
+    const round = createRound();
+    const player = PlayerId.from("player");
+
+    round.placeBet("bet-1", player, Money.fromCents(100));
+
+    expect(round.canStartAfterBettingWindow()).toBe(false);
+    round.markPlayerReady(player);
+    expect(round.canStartAfterBettingWindow()).toBe(true);
+    expect(round.toSnapshot().bets[0]?.ready).toBe(true);
+  });
+
   test("rejects invalid bet amounts", () => {
     const round = createRound();
     const player = PlayerId.from("player");

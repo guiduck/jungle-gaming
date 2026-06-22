@@ -29,6 +29,7 @@ export const betSchema = new EntitySchema<any>({
     playerId: { type: "string", fieldName: "player_id" },
     amountCents: { type: "number", fieldName: "amount_cents" },
     status: { type: "string" },
+    ready: { type: "boolean", fieldName: "ready" },
     cashoutMultiplierBps: {
       type: "number",
       fieldName: "cashout_multiplier_bps",

@@ -5,6 +5,7 @@ import type {
   WalletResultPublisher,
 } from "../../application/ports/wallet-ports";
 import { formatLogEvent } from "../system/log-event";
+import { connectRabbitMq } from "./rabbitmq-connection";
 
 const RESULT_EXCHANGE = "wallet.results";
 
@@ -68,7 +69,7 @@ export class RabbitMqWalletResultPublisher implements WalletResultPublisher, OnM
       return this.channel;
     }
 
-    this.connection = await amqp.connect(process.env.RABBITMQ_URL ?? "amqp://admin:admin@rabbitmq:5672");
+    this.connection = await connectRabbitMq(this.logger, "wallets.wallet_result_publisher");
     this.channel = await this.connection.createChannel();
     return this.channel;
   }

@@ -1,0 +1,180 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+
+jobs:
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck frontend
+        run: npx tsc -p frontend/tsconfig.json --noEmit
+
+      - name: Test frontend
+        run: npm --workspace frontend run test
+
+      - name: Build frontend
+        run: npm --workspace frontend run build
+
+  services:
+    name: Services
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck Games
+        run: npx tsc -p services/games/tsconfig.json --noEmit
+
+      - name: Typecheck Wallets
+        run: npx tsc -p services/wallets/tsconfig.json --noEmit
+
+      - name: Test Games unit
+        run: npm --workspace @crash/games run test
+
+      - name: Test Games e2e
+        run: npm --workspace @crash/games run test:e2e
+
+      - name: Test Wallets unit
+        run: npm --workspace @crash/wallets run test
+
+      - name: Test Wallets e2e
+        run: npm --workspace @crash/wallets run test:e2e
+
+  smoke-scripts:
+    name: Smoke Scripts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check smoke script syntax
+        run: |
+          node --check scripts/demo-common.cjs
+          node --check scripts/demo-up.cjs
+          node --check scripts/smoke-api.cjs
+          node --check scripts/smoke-browser.cjs
+
+      - name: Check Playwright installation
+        run: npx playwright --version
+
+  compose-build:
+    name: Compose Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate Docker Compose config
+        run: docker compose config --quiet
+
+      - name: Build Compose services
+        run: docker compose build games wallets games-migrations wallets-migrations frontend
+
+  full-stack-smoke:
+    name: Full Stack Smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    needs:
+      - frontend
+      - services
+      - smoke-scripts
+      - compose-build
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Start deterministic demo stack
+        run: npm run demo:up
+
+      - name: Run API smoke
+        run: npm run smoke:api
+
+      - name: Run browser auth smoke
+        run: npm run smoke:browser
+
+      - name: Collect Compose logs on failure
+        if: failure()
+        run: |
+          mkdir -p output/ci
+          docker compose ps > output/ci/compose-ps.txt || true
+          docker compose logs --no-color --tail 300 > output/ci/compose-logs.txt || true
+
+      - name: Upload failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-failure-artifacts
+          path: |
+            output/ci
+            output/playwright
+
+      - name: Stop Compose stack
+        if: always()
+        run: docker compose down --remove-orphans

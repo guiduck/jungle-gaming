@@ -33,11 +33,6 @@ services:
       RABBITMQ_DEFAULT_PASS: admin
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
 
   # ---------------------------------------------------------------------------
   # Keycloak (Identity Provider)
@@ -87,7 +82,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      rabbitmq:
+      keycloak:
         condition: service_healthy
 
   # ---------------------------------------------------------------------------
@@ -130,11 +125,17 @@ services:
       DEMO_DETERMINISTIC_ROUNDS: ${DEMO_DETERMINISTIC_ROUNDS:-false}
       DEMO_ROUND_SERVER_SEED: ${DEMO_ROUND_SERVER_SEED:-jungle-smoke-seed-2026}
       DEMO_ROUND_NONCE: ${DEMO_ROUND_NONCE:-smoke-round}
+      ROUND_RUNNER_TICK_MS: ${ROUND_RUNNER_TICK_MS:-250}
+      ROUND_BETTING_TICKS: ${ROUND_BETTING_TICKS:-12}
+      ROUND_MULTIPLIER_STEP_BPS: ${ROUND_MULTIPLIER_STEP_BPS:-750}
+      WALLET_RESULT_TIMEOUT_MS: ${WALLET_RESULT_TIMEOUT_MS:-25000}
+      RABBITMQ_CONNECT_ATTEMPTS: ${RABBITMQ_CONNECT_ATTEMPTS:-180}
+      RABBITMQ_CONNECT_RETRY_MS: ${RABBITMQ_CONNECT_RETRY_MS:-1000}
     depends_on:
       games-migrations:
         condition: service_completed_successfully
       rabbitmq:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:4001/health >/dev/null || exit 1"]
       interval: 10s
@@ -153,11 +154,14 @@ services:
       - "4002:4002"
     env_file:
       - ./services/wallets/.env.example
+    environment:
+      RABBITMQ_CONNECT_ATTEMPTS: ${RABBITMQ_CONNECT_ATTEMPTS:-180}
+      RABBITMQ_CONNECT_RETRY_MS: ${RABBITMQ_CONNECT_RETRY_MS:-1000}
     depends_on:
       wallets-migrations:
         condition: service_completed_successfully
       rabbitmq:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:4002/health >/dev/null || exit 1"]
       interval: 10s

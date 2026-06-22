@@ -31,6 +31,7 @@ yarn-error.log*
 
 # Test coverage
 coverage/
+output/
 
 # Local agent and planning scaffolding
 /.codex/
@@ -46,3 +47,6 @@ coverage/
 !/docs/architecture-decisions.md
 !/docs/overview.md
 !/docs/domain-model.md
+!/docs/handoff.md
+!/docs/roadmap.md
+!/docs/next-spec-prompt.md

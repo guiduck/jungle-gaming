@@ -77,6 +77,7 @@ function printSummary() {
   console.log(`clientId: ${defaults.clientId}`);
   console.log("nextCommands:");
   console.log("  npm run smoke:api");
+  console.log("  npm run smoke:browser");
   console.log("  docker compose logs --tail 120 games wallets");
 }
 

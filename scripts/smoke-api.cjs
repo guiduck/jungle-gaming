@@ -73,9 +73,20 @@ async function main() {
 
   const history = await fetchJson(`${defaults.kongUrl}/games/rounds/history`);
   assertCondition("history contains smoked round", history.items?.some((item) => item.id === crashed.id));
+  const smokedHistory = history.items?.find((item) => item.id === crashed.id);
+  assertCondition("history includes aggregate bet count", Number.isInteger(smokedHistory?.acceptedBetCount));
+  assertCondition("history includes aggregate payout", Number.isInteger(smokedHistory?.totalPayoutCents));
 
   const playerBets = await fetchJson(`${defaults.kongUrl}/games/bets/me`, { headers: auth });
   assertCondition("player bets contain smoked bet", JSON.stringify(playerBets).includes(bet.id));
+  const smokedPlayerBet = playerBets.items?.find((item) => item.betId === bet.id);
+  assertEqual("player bet amount", smokedPlayerBet?.amountCents, betAmountCents);
+
+  const leaderboard = await fetchJson(`${defaults.kongUrl}/games/leaderboard`);
+  assertCondition("leaderboard returns items", Array.isArray(leaderboard.items));
+  if (cashedOut) {
+    assertCondition("leaderboard contains smoked cashout", leaderboard.items.some((item) => item.betId === bet.id));
+  }
 
   const verification = await fetchJson(`${defaults.kongUrl}/games/rounds/${crashed.id}/verify`);
   const verificationMatched = verifyRound(verification);
@@ -198,14 +209,14 @@ async function prepareBettingRound(playerId, auth) {
     if (current.status === "betting" && hasPlayerBet) {
       await fetchJson(`${defaults.kongUrl}/games/rounds/current/start`, { method: "POST" });
       await fetchJson(`${defaults.kongUrl}/games/rounds/current/crash`, { method: "POST" });
-      await fetchJson(`${defaults.kongUrl}/games/rounds/current/settle`, { method: "POST" });
+      await settleIfStillCurrentCrashed(current.id);
       await sleep(500);
       continue;
     }
 
     if (current.status === "running") {
       await fetchJson(`${defaults.kongUrl}/games/rounds/current/crash`, { method: "POST" });
-      await fetchJson(`${defaults.kongUrl}/games/rounds/current/settle`, { method: "POST" });
+      await settleIfStillCurrentCrashed(current.id);
       await sleep(500);
       continue;
     }
@@ -251,7 +262,7 @@ function verifyRound(round) {
     .update(round.nonce)
     .digest("hex");
   const sample = Number.parseInt(digest.slice(0, 13), 16);
-  const ratio = sample / 0x1fffffffffffff;
+  const ratio = sample / 0xfffffffffffff;
   const edge = (10000 - round.houseEdgeBps) / 10000;
   const multiplier = Math.max(1, edge / Math.max(0.000001, 1 - ratio));
   const crashMultiplierBps = Math.max(10000, Math.floor(multiplier * 10000));

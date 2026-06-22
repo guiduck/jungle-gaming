@@ -1,12 +1,21 @@
-import { BadRequestException, Body, Controller, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
-import { ApiOperation, ApiTags } from "@nestjs/swagger";
-import { GameStateService } from "../../application/game-state.service";
+import { BadRequestException, Body, Controller, Get, Param, Post, Query, Req, UseGuards } from "@nestjs/common";
+import { ApiOperation, ApiQuery, ApiTags } from "@nestjs/swagger";
+import {
+  GameStateService,
+  LEADERBOARD_DEFAULT_LIMIT,
+  LEADERBOARD_MAX_LIMIT,
+  PLAYER_BET_HISTORY_DEFAULT_LIMIT,
+  PLAYER_BET_HISTORY_MAX_LIMIT,
+  ROUND_HISTORY_DEFAULT_LIMIT,
+  ROUND_HISTORY_MAX_LIMIT,
+} from "../../application/game-state.service";
 import { DomainError } from "../../domain";
 import { KeycloakJwtGuard } from "../auth/keycloak-jwt.guard";
 import type { PlayerRequest } from "../auth/player-request";
 import { CashoutRequestDto } from "../dtos/cashout-request.dto";
 import { HealthCheckResponseDto } from "../dtos/health-check-response.dto";
 import { PlaceBetRequestDto } from "../dtos/place-bet-request.dto";
+import { parseLeaderboardMetric, parseReadLimit } from "../read-query-params";
 
 @Controller()
 @ApiTags("games")
@@ -27,8 +36,31 @@ export class GamesController {
 
   @Get("rounds/history")
   @ApiOperation({ summary: "Get recent completed rounds" })
-  async history(): Promise<unknown> {
-    return { items: await this.gameState.getRoundHistory() };
+  @ApiQuery({ name: "limit", required: false, example: 20 })
+  async history(@Query("limit") limit?: string): Promise<unknown> {
+    return {
+      items: await this.gameState.getRoundHistorySummaries(
+        parseReadLimit(limit, ROUND_HISTORY_DEFAULT_LIMIT, ROUND_HISTORY_MAX_LIMIT),
+      ),
+    };
+  }
+
+  @Get("leaderboard")
+  @ApiOperation({ summary: "Get recent realized cashout leaderboard" })
+  @ApiQuery({ name: "metric", required: false, enum: ["payout", "multiplier"] })
+  @ApiQuery({ name: "limit", required: false, example: 10 })
+  async leaderboard(
+    @Query("metric") metric?: string,
+    @Query("limit") limit?: string,
+  ): Promise<unknown> {
+    const normalizedMetric = parseLeaderboardMetric(metric);
+    return {
+      metric: normalizedMetric,
+      items: await this.gameState.getLeaderboard(
+        normalizedMetric,
+        parseReadLimit(limit, LEADERBOARD_DEFAULT_LIMIT, LEADERBOARD_MAX_LIMIT),
+      ),
+    };
   }
 
   @Get("rounds/:roundId/verify")
@@ -40,8 +72,17 @@ export class GamesController {
   @Get("bets/me")
   @UseGuards(KeycloakJwtGuard)
   @ApiOperation({ summary: "Get the current player's round snapshots with bets" })
-  async myBets(@Req() request: PlayerRequest): Promise<unknown> {
-    return { items: await this.gameState.getPlayerBets(this.playerId(request)) };
+  @ApiQuery({ name: "limit", required: false, example: 20 })
+  async myBets(
+    @Req() request: PlayerRequest,
+    @Query("limit") limit?: string,
+  ): Promise<unknown> {
+    return {
+      items: await this.gameState.getPlayerBetHistory(
+        this.playerId(request),
+        parseReadLimit(limit, PLAYER_BET_HISTORY_DEFAULT_LIMIT, PLAYER_BET_HISTORY_MAX_LIMIT),
+      ),
+    };
   }
 
   @Post("bet")
@@ -73,6 +114,13 @@ export class GamesController {
   ): Promise<unknown> {
     this.assertInteger(body.multiplierBps, "multiplierBps");
     return this.run(() => this.gameState.cashOut(this.playerId(request), body.multiplierBps));
+  }
+
+  @Post("bet/ready")
+  @UseGuards(KeycloakJwtGuard)
+  @ApiOperation({ summary: "Mark the current player's accepted bet as ready to start" })
+  ready(@Req() request: PlayerRequest): Promise<unknown> {
+    return this.run(() => this.gameState.markBetReady(this.playerId(request)));
   }
 
   @Post("rounds/current/start")

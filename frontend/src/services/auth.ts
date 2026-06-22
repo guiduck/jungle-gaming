@@ -3,31 +3,15 @@ import { logFrontendEvent } from "./telemetry";
 const PLAYER_ID_KEY = "jungle.playerId";
 const ACCESS_TOKEN_KEY = "jungle.accessToken";
 const PKCE_VERIFIER_KEY = "jungle.pkceVerifier";
+const KEYCLOAK_READINESS_TIMEOUT_MS = 3500;
+export const AUTH_REQUIRED_EVENT = "jungle.auth.required";
 
-export type AuthMode = "keycloak" | "dev";
-
-export function getAuthMode(): AuthMode {
-  return import.meta.env.VITE_AUTH_MODE === "dev" ? "dev" : "keycloak";
-}
-
-export function isDevAuthMode(): boolean {
-  return getAuthMode() === "dev";
-}
-
-export function getPlayerId(): string {
-  return localStorage.getItem(PLAYER_ID_KEY) ?? "player";
+export interface AuthRequiredDetail {
+  reason: string;
 }
 
 export function getCurrentPlayerId(): string {
-  if (isDevAuthMode()) {
-    return getPlayerId();
-  }
-
-  return getAccessTokenSubject() ?? getPlayerId();
-}
-
-export function setPlayerId(playerId: string): void {
-  localStorage.setItem(PLAYER_ID_KEY, playerId.trim() || "player");
+  return getAccessTokenSubject() ?? "";
 }
 
 export function getAccessToken(): string | undefined {
@@ -45,6 +29,19 @@ export function setAccessToken(token: string): void {
 
 export function clearAccessToken(): void {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(PLAYER_ID_KEY);
+}
+
+export function notifyAuthRequired(reason: string): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.dispatchEvent(
+    new CustomEvent<AuthRequiredDetail>(AUTH_REQUIRED_EVENT, {
+      detail: { reason },
+    }),
+  );
 }
 
 export function getAccessTokenSubject(): string | undefined {
@@ -59,6 +56,7 @@ export function getAccessTokenSubject(): string | undefined {
 }
 
 export async function beginKeycloakLogin(): Promise<void> {
+  await ensureKeycloakReachable();
   const verifier = randomString();
   const challenge = await pkceChallenge(verifier);
   sessionStorage.setItem(PKCE_VERIFIER_KEY, verifier);
@@ -75,50 +73,74 @@ export async function completeKeycloakLoginFromCallback(): Promise<boolean> {
   const code = params.get("code");
   const verifier = sessionStorage.getItem(PKCE_VERIFIER_KEY);
 
-  if (!code || !verifier) {
+  if (!code) {
     logFrontendEvent("auth.callback.skipped", {
       authMode: "keycloak",
-      hasCode: Boolean(code),
+      hasCode: false,
       hasVerifier: Boolean(verifier),
     });
     return false;
   }
 
-  const response = await fetch(keycloakTokenUrl(), {
-    method: "POST",
-    headers: { "content-type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "authorization_code",
-      client_id: keycloakClientId(),
-      code,
-      redirect_uri: redirectUri(),
-      code_verifier: verifier,
-    }),
-  });
+  if (!verifier) {
+    clearAccessToken();
+    clearKeycloakCallbackUrl();
+    logFrontendEvent("auth.callback.failed", {
+      authMode: "keycloak",
+      reason: "missing_pkce_verifier",
+    }, "warn");
+    throw new Error("Nao foi possivel concluir o login porque a sessao PKCE expirou. Clique para entrar novamente.");
+  }
+
+  sessionStorage.removeItem(PKCE_VERIFIER_KEY);
+
+  let response: Response;
+  try {
+    response = await fetch(keycloakTokenUrl(), {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        client_id: keycloakClientId(),
+        code,
+        redirect_uri: redirectUri(),
+        code_verifier: verifier,
+      }),
+    });
+  } catch (error) {
+    clearAccessToken();
+    clearKeycloakCallbackUrl();
+    logFrontendEvent("auth.callback.failed", {
+      authMode: "keycloak",
+      reason: error instanceof Error ? error.message : String(error),
+    }, "warn");
+    throw new Error("Keycloak retornou para o jogo, mas o token nao pode ser confirmado. Verifique se o container esta pronto e tente novamente.");
+  }
 
   if (!response.ok) {
     clearAccessToken();
+    clearKeycloakCallbackUrl();
     logFrontendEvent("auth.callback.failed", {
       authMode: "keycloak",
       status: response.status,
     }, "warn");
-    return false;
+    throw new Error("Keycloak recusou a troca do login por token. Clique para entrar novamente.");
   }
 
   const payload = (await response.json()) as { access_token?: string };
 
   if (!payload.access_token) {
     clearAccessToken();
+    clearKeycloakCallbackUrl();
     logFrontendEvent("auth.callback.failed", {
       authMode: "keycloak",
       reason: "missing_access_token",
     }, "warn");
-    return false;
+    throw new Error("Keycloak respondeu sem token de acesso. Clique para entrar novamente.");
   }
 
   setAccessToken(payload.access_token);
-  sessionStorage.removeItem(PKCE_VERIFIER_KEY);
-  window.history.replaceState({}, document.title, window.location.pathname);
+  clearKeycloakCallbackUrl();
   logFrontendEvent("auth.callback.completed", {
     authMode: "keycloak",
     playerId: getAccessTokenSubject(),
@@ -156,6 +178,31 @@ function keycloakAuthorizeUrl(challenge: string): string {
 
 function keycloakTokenUrl(): string {
   return `${keycloakBaseUrl()}/realms/${keycloakRealm()}/protocol/openid-connect/token`;
+}
+
+function clearKeycloakCallbackUrl(): void {
+  window.history.replaceState({}, document.title, window.location.pathname);
+}
+
+async function ensureKeycloakReachable(): Promise<void> {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), KEYCLOAK_READINESS_TIMEOUT_MS);
+
+  try {
+    await fetch(`${keycloakBaseUrl()}/realms/${keycloakRealm()}/.well-known/openid-configuration`, {
+      cache: "no-store",
+      mode: "no-cors",
+      signal: controller.signal,
+    });
+  } catch (error) {
+    logFrontendEvent("auth.login.failed", {
+      authMode: "keycloak",
+      reason: error instanceof Error ? error.message : String(error),
+    }, "warn");
+    throw new Error("Keycloak nao respondeu. Verifique se o container esta pronto e tente novamente.");
+  } finally {
+    window.clearTimeout(timeout);
+  }
 }
 
 function randomString(): string {

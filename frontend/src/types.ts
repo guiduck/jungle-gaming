@@ -5,6 +5,7 @@ export interface Bet {
   playerId: string;
   amountCents: number;
   status: "pending" | "cashed_out" | "lost";
+  ready?: boolean;
   cashoutMultiplierBps?: number;
   payoutCents?: number;
   autoCashoutMultiplierBps?: number;
@@ -31,6 +32,63 @@ export interface CompletedRound {
     multiplierScale: "basis_points";
   };
   crashedAt: string;
+}
+
+export interface RoundNotableBet {
+  betId: string;
+  playerId: string;
+  amountCents: number;
+  status: "pending" | "cashed_out" | "lost";
+  cashoutMultiplierBps?: number;
+  payoutCents?: number;
+  autoCashoutMultiplierBps?: number;
+  cashoutTrigger?: "manual" | "auto";
+}
+
+export interface RoundHistorySummary {
+  id: string;
+  crashMultiplierBps: number;
+  crashedAt: string;
+  settledAt?: string;
+  acceptedBetCount: number;
+  cashedOutBetCount: number;
+  lostBetCount: number;
+  totalWageredCents: number;
+  totalPayoutCents: number;
+  verificationAvailable: boolean;
+  notableBets: RoundNotableBet[];
+}
+
+export interface LeaderboardEntry {
+  rank: number;
+  playerId: string;
+  roundId: string;
+  betId: string;
+  amountCents: number;
+  payoutCents: number;
+  cashoutMultiplierBps: number;
+  cashoutTrigger?: "manual" | "auto";
+  autoCashoutMultiplierBps?: number;
+  crashMultiplierBps: number;
+  crashedAt: string;
+}
+
+export interface LeaderboardResponse {
+  metric: "payout" | "multiplier";
+  items: LeaderboardEntry[];
+}
+
+export interface PlayerBetHistoryEntry {
+  roundId: string;
+  betId: string;
+  amountCents: number;
+  status: "pending" | "cashed_out" | "lost";
+  crashMultiplierBps: number;
+  autoCashoutMultiplierBps?: number;
+  cashoutMultiplierBps?: number;
+  payoutCents?: number;
+  cashoutTrigger?: "manual" | "auto";
+  crashedAt?: string;
 }
 
 export interface ItemsResponse<T> {

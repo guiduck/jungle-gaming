@@ -21,7 +21,8 @@ montanha, com o multiplicador e o estado da rodada guiando a animacao.
 
 ## Fluxo Principal
 
-1. O jogador faz login pelo Keycloak e chega na tela do jogo.
+1. O jogador ve uma breve apresentacao visual-novel, entra pelo painel proprio do Jungle Crash que
+   delega a validacao ao Keycloak/PKCE, e chega na tela do jogo.
 2. Durante a fase de apostas, o jogador faz uma aposta valida para a rodada atual.
 3. O servidor inicia a rodada, emite atualizacoes em tempo real do multiplicador e a UI anima a
    cabra subindo a montanha.
@@ -29,6 +30,9 @@ montanha, com o multiplicador e o estado da rodada guiando a animacao.
    apostado e do multiplicador atual.
 5. O servidor revela o ponto de crash, liquida as apostas pelo fluxo da carteira, persiste o
    historico e abre a proxima fase de apostas.
+
+Depois do login, a cabra Nina apresenta um mini tutorial do jogo e abre o modal de comandos. O
+jogador tambem pode apostar e sacar por teclado sem usar atalhos comuns do navegador.
 
 ## Foco Atual
 

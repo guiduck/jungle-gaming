@@ -20,11 +20,22 @@ import type {
   GameEventPublisher,
   GameWalletGateway,
   IdGenerator,
+  LeaderboardEntry,
+  LeaderboardMetric,
+  PlayerBetHistoryEntry,
   RoundRepository,
+  RoundHistorySummary,
+  WalletEffectRequest,
   WalletEffectResult,
 } from "./ports/game-ports";
 
 const HOUSE_EDGE_BPS = 100;
+export const ROUND_HISTORY_DEFAULT_LIMIT = 20;
+export const ROUND_HISTORY_MAX_LIMIT = 50;
+export const PLAYER_BET_HISTORY_DEFAULT_LIMIT = 20;
+export const PLAYER_BET_HISTORY_MAX_LIMIT = 50;
+export const LEADERBOARD_DEFAULT_LIMIT = 10;
+export const LEADERBOARD_MAX_LIMIT = 25;
 const VERIFICATION_FORMULA = {
   commitmentAlgorithm: "sha256" as const,
   crashAlgorithm: "hmac-sha256" as const,
@@ -56,6 +67,17 @@ export class GameStateService {
     return this.rounds.getHistory(20);
   }
 
+  getRoundHistorySummaries(limit = ROUND_HISTORY_DEFAULT_LIMIT): Promise<RoundHistorySummary[]> {
+    return this.rounds.getRoundHistorySummaries(limit);
+  }
+
+  getLeaderboard(
+    metric: LeaderboardMetric = "payout",
+    limit = LEADERBOARD_DEFAULT_LIMIT,
+  ): Promise<LeaderboardEntry[]> {
+    return this.rounds.getLeaderboard(limit, metric);
+  }
+
   async getVerification(roundId: string): Promise<CompletedRoundRecord> {
     const round = await this.rounds.getCompleted(roundId);
 
@@ -71,6 +93,14 @@ export class GameStateService {
     return this.rounds.getPlayerRoundSnapshots(playerId.value, 20);
   }
 
+  getPlayerBetHistory(
+    playerIdValue: string,
+    limit = PLAYER_BET_HISTORY_DEFAULT_LIMIT,
+  ): Promise<PlayerBetHistoryEntry[]> {
+    const playerId = PlayerId.from(playerIdValue);
+    return this.rounds.getPlayerBetHistory(playerId.value, limit);
+  }
+
   async placeBet(
     playerIdValue: string,
     amountCents: number,
@@ -82,18 +112,26 @@ export class GameStateService {
     const amount = Money.fromCents(amountCents);
     round.assertCanPlaceBet(playerId, amount, autoCashoutMultiplierBps);
     const now = this.clock.now().toISOString();
-    const debitResult = await this.walletGateway.requestBetDebit({
+    const debitRequest = {
       idempotencyKey: `bet-debit:${round.id}:${playerId.value}`,
       playerId: playerId.value,
       roundId: round.id,
       betId,
       amountCents: amount.cents,
       occurredAt: now,
-    });
+    };
+    const debitResult = await this.walletGateway.requestBetDebit(debitRequest);
 
     this.assertWalletAccepted(debitResult, "Bet wallet confirmation timed out");
+
+    const confirmedRound = await this.rounds.getCurrent();
+    if (confirmedRound.id !== round.id || confirmedRound.status !== "betting") {
+      await this.refundLateBetDebit(debitRequest);
+      throw new DomainError("Betting window closed before wallet confirmation; debit refunded");
+    }
+
     this.logger.log(formatLogEvent("wallet.debit.accepted", {
-      roundId: round.id,
+      roundId: confirmedRound.id,
       betId,
       playerId: playerId.value,
       amountCents: amount.cents,
@@ -101,22 +139,24 @@ export class GameStateService {
       result: debitResult.status,
     }));
 
-    const bet = round.placeBet(
+    const bet = confirmedRound.placeBet(
       betId,
       playerId,
       amount,
       autoCashoutMultiplierBps,
     );
-    await this.rounds.saveCurrent(round);
+    await this.rounds.saveCurrent(confirmedRound);
+    const snapshot = confirmedRound.toSnapshot();
     this.events.publish("bet.accepted", {
-      roundId: round.id,
+      roundId: confirmedRound.id,
       betId: bet.id,
       playerId: playerId.value,
       amountCents,
       autoCashoutMultiplierBps: bet.autoCashoutMultiplierBps,
       walletOperationKey: debitResult.idempotencyKey,
+      round: snapshot,
     });
-    return round.toSnapshot();
+    return snapshot;
   }
 
   async cashOut(playerIdValue: string, multiplierBps: number): Promise<RoundSnapshot> {
@@ -136,8 +176,27 @@ export class GameStateService {
       multiplierBps,
       payoutCents: payout.cents,
       cashoutTrigger: "manual",
+      round: round.toSnapshot(),
     });
     return round.toSnapshot();
+  }
+
+  async markBetReady(playerIdValue: string): Promise<RoundSnapshot> {
+    const round = await this.rounds.getCurrent();
+    const playerId = PlayerId.from(playerIdValue);
+    round.markPlayerReady(playerId);
+    await this.rounds.saveCurrent(round);
+    const snapshot = round.toSnapshot();
+    this.logger.log(formatLogEvent("bet.ready", {
+      roundId: round.id,
+      playerId: playerId.value,
+    }));
+    this.events.publish("bet.ready", {
+      roundId: round.id,
+      playerId: playerId.value,
+      round: snapshot,
+    });
+    return snapshot;
   }
 
   async evaluateAutoCashouts(currentMultiplierBps: number): Promise<RoundSnapshot> {
@@ -167,6 +226,7 @@ export class GameStateService {
         payoutCents: result.payoutCents,
         cashoutTrigger: result.cashoutTrigger,
         autoCashoutMultiplierBps: result.autoCashoutMultiplierBps,
+        round: round.toSnapshot(),
       });
     }
 
@@ -181,8 +241,9 @@ export class GameStateService {
       roundId: round.id,
       multiplierBps: round.crashPoint.multiplierBps,
     }));
-    this.events.publish("round.started", { roundId: round.id });
-    return round.toSnapshot();
+    const snapshot = round.toSnapshot();
+    this.events.publish("round.started", { roundId: round.id, round: snapshot });
+    return snapshot;
   }
 
   async publishMultiplierTick(multiplierBps: number): Promise<void> {
@@ -212,6 +273,7 @@ export class GameStateService {
     this.events.publish("round.crashed", {
       roundId: round.id,
       crashMultiplierBps: round.crashPoint.multiplierBps,
+      round: round.toSnapshot(),
     });
 
     return round.toSnapshot();
@@ -302,14 +364,16 @@ export class GameStateService {
       roundId: nextRound.id,
       result: "created",
     }));
-    return nextRound.toSnapshot();
+    const snapshot = nextRound.toSnapshot();
+    this.events.publish("round.betting.opened", { roundId: nextRound.id, round: snapshot });
+    return snapshot;
   }
 
   private async settleRound(round: Round): Promise<void> {
     round.settle();
     await this.rounds.saveCurrent(round);
     this.logger.log(formatLogEvent("round.settled", { roundId: round.id }));
-    this.events.publish("round.settled", { roundId: round.id });
+    this.events.publish("round.settled", { roundId: round.id, round: round.toSnapshot() });
   }
 
   handleWalletResult(result: WalletEffectResult): void {
@@ -382,5 +446,25 @@ export class GameStateService {
           }));
         }),
       ));
+  }
+
+  private async refundLateBetDebit(request: WalletEffectRequest): Promise<void> {
+    const refundKey = `bet-refund:${request.roundId}:${request.playerId}`;
+    const result = await this.walletGateway.requestPayoutCredit({
+      ...request,
+      idempotencyKey: refundKey,
+      cashoutMultiplierBps: 10000,
+      occurredAt: this.clock.now().toISOString(),
+    });
+
+    this.logger.warn(formatLogEvent("wallet.debit.refund", {
+      roundId: request.roundId,
+      betId: request.betId,
+      playerId: request.playerId,
+      amountCents: request.amountCents,
+      idempotencyKey: refundKey,
+      result: result.status,
+      reason: result.reason,
+    }));
   }
 }

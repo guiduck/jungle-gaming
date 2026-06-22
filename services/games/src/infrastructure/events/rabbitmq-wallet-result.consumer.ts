@@ -7,6 +7,7 @@ import {
   type WalletEffectResult,
 } from "../../application/ports/game-ports";
 import { formatLogEvent } from "../system/log-event";
+import { connectRabbitMq } from "./rabbitmq-connection";
 
 const RESULT_EXCHANGE = "wallet.results";
 const RESULT_QUEUE = "wallet.results.games";
@@ -87,7 +88,7 @@ export class RabbitMqWalletResultConsumer implements OnModuleInit, OnModuleDestr
       return this.channel;
     }
 
-    this.connection = await amqp.connect(process.env.RABBITMQ_URL ?? "amqp://admin:admin@rabbitmq:5672");
+    this.connection = await connectRabbitMq(this.logger, "games.wallet_result_consumer");
     this.channel = await this.connection.createChannel();
     return this.channel;
   }

@@ -19,6 +19,7 @@ export class BetEntity {
   playerId!: string;
   amountCents!: number;
   status!: "pending" | "cashed_out" | "lost";
+  ready!: boolean;
   cashoutMultiplierBps?: number;
   payoutCents?: number;
   autoCashoutMultiplierBps?: number;

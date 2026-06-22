@@ -32,4 +32,11 @@ describe("ProvablyFair", () => {
       ),
     ).toBe(true);
   });
+
+  test("uses the full sampled HMAC range for multipliers above 2x", () => {
+    const round = ProvablyFair.createRound("server-seed-fixed", "round-1", 100);
+
+    expect(round.crashPoint.multiplierBps).toBe(96127);
+    expect(round.crashPoint.multiplierBps).toBeGreaterThan(20000);
+  });
 });

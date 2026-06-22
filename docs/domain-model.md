@@ -93,11 +93,15 @@ E dono do saldo do jogador, das operacoes monetarias e da integridade da liquida
 - Auto cashout foi adicionado como diferencial de Phase 4 sem alterar a regra de dinheiro: o Game
   persiste o alvo na aposta, registra `cashoutTrigger` quando o cashout acontece e continua usando
   `payout-credit:{roundId}:{betId}` para credito idempotente no Wallet.
+- Leaderboard e historico enriquecido sao read models derivados de `Round` e `Bet`, nao novos
+  aggregates. Eles usam apenas rodadas completadas e dados autoritativos persistidos para calcular
+  contagens, totais em centavos, cashouts notaveis, ranking por payout/multiplicador e historico da
+  aposta do jogador autenticado.
 
 ## Perguntas em Aberto
 
 - A reconciliacao deve ser fortalecida para provar que nao ficam multiplas rodadas ativas jogaveis
   apos restart ou apos dados antigos de smoke.
-- A curva visual final da montanha deve ser especificada em uma proxima etapa de polish, usando a
-  formula do multiplicador para desenhar a trilha e inclinar a cabra de acordo com a derivada da
-  curva.
+- Possiveis bonus futuros incluem outbox/inbox transacional, smoke automatizado de PKCE no
+  navegador, testes Playwright mais profundos ou observabilidade mais rica se houver requisito
+  explicito.

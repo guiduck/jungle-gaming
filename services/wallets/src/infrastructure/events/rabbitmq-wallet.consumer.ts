@@ -2,6 +2,7 @@ import * as amqp from "amqplib";
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { WalletStateService } from "../../application/wallet-state.service";
 import { formatLogEvent } from "../system/log-event";
+import { connectRabbitMq } from "./rabbitmq-connection";
 
 const REQUEST_EXCHANGE = "wallet.requests";
 const REQUEST_QUEUE = "wallet.requests.wallets";
@@ -87,7 +88,7 @@ export class RabbitMqWalletConsumer implements OnModuleInit, OnModuleDestroy {
       return this.channel;
     }
 
-    this.connection = await amqp.connect(process.env.RABBITMQ_URL ?? "amqp://admin:admin@rabbitmq:5672");
+    this.connection = await connectRabbitMq(this.logger, "wallets.wallet_consumer");
     this.channel = await this.connection.createChannel();
     return this.channel;
   }
