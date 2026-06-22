@@ -191,6 +191,11 @@ Status:
   game layout section titles, betting controls, status labels, read-model empty states, outcome
   labels, document language, and currency display now target Brazilian Portuguese. The command
   entry point remains `Show commands` by explicit product request.
+- A final playability hotfix is complete: accepted bettors must mark **Pronto para comecar** before
+  the automatic runner starts the climb, preventing wallet/auth lag from eating the betting window.
+  Empty betting rounds still progress automatically. Crash points stay below `14.00x` without
+  pinning every overflow to the ceiling, avoiding unreadable extreme rounds and repeated `14.00x`
+  outcomes.
 - A final June 22 shortcut hotfix is complete: the `C` cashout keyboard command works during a
   running round even when focus remains in the bet amount or auto-cashout input, while server-side
   cashout authority and the pending-bet guard remain unchanged.

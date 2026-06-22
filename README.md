@@ -18,6 +18,14 @@ rises.
 - Local infrastructure: Docker Compose with PostgreSQL, RabbitMQ, Keycloak, Kong, Games, Wallets,
   automatic migrations, and frontend.
 
+Gameplay notes:
+
+- Crash points stay below `14.00x` to keep local rounds playable and readable. Overflow results are
+  remapped deterministically instead of being pinned to exactly `14.00x`.
+- After a bet is accepted, the player must click **Pronto para comecar**. The automatic round
+  runner waits for all accepted bettors to be ready before starting the climb. Empty betting rounds
+  can still advance automatically.
+
 ## Prerequisites
 
 - Docker Desktop running.

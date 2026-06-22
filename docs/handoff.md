@@ -718,6 +718,21 @@
   - Validation was limited to reading the actual `package.json`, `docker-compose.yml`, service
     `.env.example` files, and smoke scripts before updating documentation. Full Docker/API/browser
     smoke was not rerun during this documentation-only closeout.
+- Playability hotfix after local feedback:
+  - Accepted bets now start as `ready=false`; authenticated players can call `POST /games/bet/ready`
+    through the new **Pronto para comecar** frontend action.
+  - The automatic round runner waits for every pending accepted bet to be marked ready before
+    starting after the betting window. Empty betting rounds still advance automatically, and manual
+    development start helpers remain available for smoke/setup flows.
+  - Generated crash points stay below `14.00x` (`140000` basis points). Overflow outcomes are
+    remapped deterministically below the ceiling instead of being pinned to exactly `14.00x`;
+    provably fair verification and the API smoke recomputation path use the same rule.
+  - Added a repeatable Game migration for the persisted bet `ready` flag.
+  - Validation: `npx.cmd tsc -p services/games/tsconfig.json --noEmit` passed;
+    `npx.cmd tsc -p frontend/tsconfig.json --noEmit` passed; `npm.cmd --workspace @crash/games
+    run test` passed: 26 tests; `npm.cmd --workspace @crash/games run test:e2e` passed: 9 tests;
+    `npm.cmd --workspace frontend run test` passed: 7 files, 35 tests; `npm.cmd --workspace
+    frontend run build` passed; `node --check scripts/smoke-api.cjs` passed.
 - Final shortcut/spec closeout on June 22, 2026:
   - Fixed the `C` cashout keyboard command so it still fires when focus remains in the bet amount
     or auto-cashout input after placing a bet. The cashout handler still requires the current round

@@ -265,9 +265,19 @@ function verifyRound(round) {
   const ratio = sample / 0xfffffffffffff;
   const edge = (10000 - round.houseEdgeBps) / 10000;
   const multiplier = Math.max(1, edge / Math.max(0.000001, 1 - ratio));
-  const crashMultiplierBps = Math.max(10000, Math.floor(multiplier * 10000));
+  const uncappedCrashMultiplierBps = Math.max(10000, Math.floor(multiplier * 10000));
+  const crashMultiplierBps =
+    uncappedCrashMultiplierBps <= 140000
+      ? uncappedCrashMultiplierBps
+      : remapOverflowCrashPoint(digest);
   const hash = crypto.createHash("sha256").update(round.serverSeed).digest("hex");
   return hash === round.serverSeedHash && crashMultiplierBps === round.crashMultiplierBps;
+}
+
+function remapOverflowCrashPoint(digest) {
+  const sample = Number.parseInt(digest.slice(13, 26), 16);
+  const ratio = sample / 0xfffffffffffff;
+  return Math.min(139999, 10000 + Math.floor(ratio * 130000));
 }
 
 main().catch((error) => {

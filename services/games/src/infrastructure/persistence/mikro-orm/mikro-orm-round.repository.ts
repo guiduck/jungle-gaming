@@ -116,7 +116,7 @@ export class MikroOrmRoundRepository implements RoundRepository {
         playerId: bet.playerId,
         amountCents: bet.amountCents,
         status: bet.status,
-        ready: bet.ready,
+        ready: bet.ready ?? false,
         cashoutMultiplierBps: bet.cashoutMultiplierBps ?? null,
         payoutCents: bet.payoutCents ?? null,
         autoCashoutMultiplierBps: bet.autoCashoutMultiplierBps ?? null,
@@ -274,7 +274,7 @@ export class MikroOrmRoundRepository implements RoundRepository {
         betEntity.playerId = bet.playerId;
         betEntity.amountCents = bet.amountCents;
         betEntity.status = bet.status;
-        betEntity.ready = bet.ready;
+        betEntity.ready = bet.ready ?? false;
         betEntity.cashoutMultiplierBps = bet.cashoutMultiplierBps;
         betEntity.payoutCents = bet.payoutCents;
         betEntity.autoCashoutMultiplierBps = bet.autoCashoutMultiplierBps;

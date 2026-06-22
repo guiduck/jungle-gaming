@@ -4,6 +4,8 @@ import { CrashPoint } from "../value-objects/crash-point";
 const DEFAULT_HOUSE_EDGE_BPS = 100;
 const HMAC_SAMPLE_HEX_CHARS = 13;
 const HMAC_SAMPLE_MAX = 0xfffffffffffff;
+const MIN_CRASH_MULTIPLIER_BPS = 10000;
+export const MAX_CRASH_MULTIPLIER_BPS = 140000;
 
 export interface ProvablyFairRound {
   serverSeed: string;
@@ -42,7 +44,8 @@ export class ProvablyFair {
     const ratio = sample / HMAC_SAMPLE_MAX;
     const edge = (10000 - houseEdgeBps) / 10000;
     const multiplier = Math.max(1, edge / Math.max(0.000001, 1 - ratio));
-    return CrashPoint.fromBasisPoints(Math.max(10000, Math.floor(multiplier * 10000)));
+    const uncappedCrashPointBps = Math.max(MIN_CRASH_MULTIPLIER_BPS, Math.floor(multiplier * 10000));
+    return CrashPoint.fromBasisPoints(ProvablyFair.applyCrashPointCeiling(uncappedCrashPointBps, digest));
   }
 
   static verify(
@@ -57,5 +60,23 @@ export class ProvablyFair {
       ProvablyFair.calculateCrashPoint(serverSeed, nonce, houseEdgeBps).multiplierBps ===
         expectedCrashPointBps
     );
+  }
+
+  private static applyCrashPointCeiling(uncappedCrashPointBps: number, digest: string): number {
+    if (uncappedCrashPointBps <= MAX_CRASH_MULTIPLIER_BPS) {
+      return uncappedCrashPointBps;
+    }
+
+    const ceilingSampleStart = HMAC_SAMPLE_HEX_CHARS;
+    const ceilingSample = Number.parseInt(
+      digest.slice(ceilingSampleStart, ceilingSampleStart + HMAC_SAMPLE_HEX_CHARS),
+      16,
+    );
+    const ceilingRatio = ceilingSample / HMAC_SAMPLE_MAX;
+    const boundedRangeBps = MAX_CRASH_MULTIPLIER_BPS - MIN_CRASH_MULTIPLIER_BPS;
+    const boundedCrashPointBps =
+      MIN_CRASH_MULTIPLIER_BPS + Math.floor(ceilingRatio * boundedRangeBps);
+
+    return Math.min(MAX_CRASH_MULTIPLIER_BPS - 1, boundedCrashPointBps);
   }
 }

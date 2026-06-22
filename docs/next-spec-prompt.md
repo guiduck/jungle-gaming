@@ -9,7 +9,8 @@ been handed in.
 The project has been closed for evaluator delivery. `README.md` now documents prerequisites,
 tracked service `.env.example` defaults, optional root `.env` overrides, demo startup,
 production-like local startup, validation commands, troubleshooting, URLs, credentials, and
-deferred work.
+deferred work. A final playability hotfix added a bettor-ready gate before automatic round start and
+kept generated crash multipliers below `14.00x` without pinning every overflow to the ceiling.
 
 The immediate goal is submission, not new scope. Any future Spec Kit work should only happen after
 delivery or if a blocking evaluator issue is discovered. A June 22 multiplier smoothness hotfix
@@ -33,6 +34,9 @@ remains in the betting inputs.
   - Username: `player`
   - Password: `player123`
   - Realm/client: `crash-game` / `crash-game-client`
+- Current playability guardrails:
+  - accepted bettors click **Pronto para comecar** before the automatic runner starts;
+  - crash points stay below `14.00x` (`140000` basis points) without repeated ceiling pins.
 
 ## Requirements
 - Do not introduce new gameplay, auth, wallet, RabbitMQ, WebSocket, persistence, or UI feature

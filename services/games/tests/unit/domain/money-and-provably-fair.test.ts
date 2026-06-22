@@ -39,4 +39,20 @@ describe("ProvablyFair", () => {
     expect(round.crashPoint.multiplierBps).toBe(96127);
     expect(round.crashPoint.multiplierBps).toBeGreaterThan(20000);
   });
+
+  test("keeps overflow crash points below 14x without pinning them to the ceiling", () => {
+    const round = ProvablyFair.createRound("seed-22", "round-22", 100);
+
+    expect(round.crashPoint.multiplierBps).toBe(22138);
+    expect(round.crashPoint.multiplierBps).toBeLessThan(140000);
+    expect(
+      ProvablyFair.verify(
+        round.serverSeed,
+        round.serverSeedHash,
+        round.nonce,
+        22138,
+        round.houseEdgeBps,
+      ),
+    ).toBe(true);
+  });
 });
