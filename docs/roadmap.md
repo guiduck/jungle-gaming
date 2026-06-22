@@ -204,7 +204,8 @@ Candidates:
 
 - The final evaluator README runbook is complete for submission: prerequisites, `.env` handling,
   demo startup, production-like local startup, smoke commands, URLs, credentials, troubleshooting,
-  and deferred work are documented in `README.md`.
+  and deferred work are documented in `README.md`. The runbook is now in Brazilian Portuguese with
+  beginner-friendly steps for demo mode and production-like local mode.
 - If work continues after delivery, use a post-submission hardening pass for fresh full-stack smoke
   evidence and any remaining production-readiness notes.
 - Defer transactional outbox/inbox, broader Playwright regression coverage, richer observability,
@@ -258,7 +259,8 @@ Status:
 
 Gate:
 
-- README runbook path is documented from Docker Desktop start to playable authenticated UI.
+- README runbook path is documented in Portuguese from Docker Desktop start to playable
+  authenticated UI.
 - README, handoff, roadmap, and next-spec prompt agree that no new feature work is required before
   submission.
 - Known non-goals and deferred bonuses are explicit.

@@ -6,11 +6,12 @@ Specify an optional post-submission hardening pass for Jungle Crash Game after t
 been handed in.
 
 ## Source Request
-The project has been closed for evaluator delivery. `README.md` now documents prerequisites,
-tracked service `.env.example` defaults, optional root `.env` overrides, demo startup,
-production-like local startup, validation commands, troubleshooting, URLs, credentials, and
-deferred work. A final playability hotfix added a bettor-ready gate before automatic round start and
-kept generated crash multipliers below `14.00x` without pinning every overflow to the ceiling.
+The project has been closed for evaluator delivery. `README.md` is now a Brazilian Portuguese,
+beginner-friendly runbook that documents prerequisites, tracked service `.env.example` defaults,
+demo startup, production-like local startup, validation commands, troubleshooting, URLs,
+credentials, and deferred work. A final playability hotfix added a bettor-ready gate before
+automatic round start and kept generated crash multipliers below `14.00x` without pinning every
+overflow to the ceiling.
 
 The immediate goal is submission, not new scope. Any future Spec Kit work should only happen after
 delivery or if a blocking evaluator issue is discovered. A June 22 multiplier smoothness hotfix
@@ -24,6 +25,8 @@ remains in the betting inputs.
 - Stack: NestJS, MikroORM, PostgreSQL, RabbitMQ, Kong, Keycloak, Vite React, Tailwind CSS,
   TanStack Query, Zustand, Docker Compose, GitHub Actions, and Playwright.
 - Evaluator runbook: `README.md`.
+- Runbook language: Brazilian Portuguese, with simple step-by-step demo and production-like local
+  instructions.
 - Primary delivery commands:
   - `npm install`
   - `npm run demo:up`

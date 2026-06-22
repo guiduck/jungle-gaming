@@ -741,6 +741,15 @@
     already completed task list.
   - Updated `README.md`, `docs/roadmap.md`, and `docs/next-spec-prompt.md` so final delivery docs
     point to submission/post-submission hardening instead of reopening feature scope.
+- Portuguese README runbook follow-up:
+  - Rewrote `README.md` in Brazilian Portuguese with intentionally simple step-by-step
+    instructions for running the project in demo mode and production-like local mode.
+  - Kept the documented commands aligned with the actual root scripts: `npm install`,
+    `npm run demo:up`, `npm run docker:up`, `npm run smoke:api`, and optional
+    `npm run smoke:browser`.
+  - This was documentation-only; application code, Docker services, public API contracts,
+    RabbitMQ/WebSocket contracts, auth behavior, gameplay behavior, and smoke scripts were not
+    changed.
 
 ## Product Direction To Preserve
 
@@ -780,6 +789,10 @@
 - The README/evaluator runbook closeout is now documented. Before submitting, the preferred final
   local confidence pass is still: `npm run demo:up`, `npm run smoke:api`, and optionally
   `npm run smoke:browser` if Docker Desktop and Playwright/Chromium are healthy.
+- The README is now localized in Portuguese and written as a beginner-friendly runbook for demo
+  mode and production-like local mode. Documentation-only validation was performed by checking the
+  root scripts and Compose configuration inputs; full Docker/API/browser smoke was not rerun for
+  this copy-only update.
 - Defer durable outbox/inbox, broad Playwright regression tests, sound effects, and deeper
   observability unless a new requirement justifies them.
 
