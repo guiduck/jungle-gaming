@@ -14,7 +14,7 @@ describe("InMemoryRoundRepository", () => {
       id: current.id,
       crashMultiplierBps: current.crashPoint.multiplierBps,
       serverSeedHash: current.serverSeedHash,
-      serverSeed: `server-seed-${current.id}`,
+      serverSeed: current.serverSeed || `test-server-seed-${current.id}`,
       nonce: current.nonce,
       houseEdgeBps: 100,
       formula: {
@@ -160,7 +160,7 @@ async function completeRound(
     id: round.id,
     crashMultiplierBps: round.crashPoint.multiplierBps,
     serverSeedHash: round.serverSeedHash,
-    serverSeed: `server-seed-${round.id}`,
+    serverSeed: round.serverSeed || `test-server-seed-${round.id}`,
     nonce: round.nonce,
     houseEdgeBps: 100,
     formula: {

@@ -78,6 +78,13 @@ E dono do saldo do jogador, das operacoes monetarias e da integridade da liquida
 
 - Provably fair usa compromisso de seed com SHA-256, derivacao de crash com HMAC-SHA256 e
   `houseEdgeBps = 100`.
+- Em runtime normal, a seed do servidor e aleatoria e secreta ate a rodada terminar. Antes do crash,
+  clientes veem apenas o `serverSeedHash`; depois do crash, o historico/verificacao revela a seed,
+  o nonce, a formula e o multiplicador para recomputacao independente.
+- O modo demo pode usar seed/nonce fixos para smoke deterministico, mas essa escolha e isolada por
+  `DEMO_DETERMINISTIC_ROUNDS=true` e nao muda a formula de verificacao.
+- O ponto de crash local fica abaixo de `14.00x`; overflow acima do teto e remapeado de forma
+  deterministica dentro do intervalo permitido, sem pinning em `14.00x`.
 - RabbitMQ usa eventos explicitos de requisicao/resultado para debito de aposta e credito de
   payout, sempre com chaves de idempotencia.
 - A liquidacao usa um fluxo simples de eventos com handlers idempotentes, nao um framework de saga

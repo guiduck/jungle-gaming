@@ -127,7 +127,7 @@ Responsibilities:
 - Explain that `npm run demo:up` should run first.
 - Launch a clean non-persistent Chromium context.
 - Navigate to `http://localhost:3000`.
-- Confirm the unauthenticated/login-required state appears with no `jungle.accessToken`.
+- Confirm the public unauthenticated welcome state appears with no `jungle.accessToken`.
 - Start the Keycloak login through the normal frontend flow.
 - Fill Keycloak username/password with local demo credentials `player` / `player123`.
 - Wait for the redirect/callback to return to the frontend.
@@ -229,6 +229,8 @@ curate screenshots.
 If selectors are brittle, add stable non-visual attributes to existing components in
 `frontend/src/App.tsx` and/or related components:
 
+- `data-smoke="public-welcome"`
+- `data-smoke="welcome-modal"`
 - `data-smoke="login-required-modal"`
 - `data-smoke="wallet-display"`
 - `data-smoke="round-phase"`

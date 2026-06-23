@@ -96,6 +96,7 @@ export class MikroOrmRoundRepository implements RoundRepository {
     entity.crashMultiplierBps = snapshot.crashMultiplierBps;
     entity.houseEdgeBps = 100;
     entity.serverSeedHash = snapshot.serverSeedHash ?? entity.serverSeedHash ?? "";
+    entity.serverSeed = round.serverSeed || entity.serverSeed;
     entity.nonce = snapshot.nonce ?? entity.nonce ?? snapshot.id;
     entity.updatedAt = now;
     entity.crashedAt = snapshot.status === "crashed" && !entity.crashedAt ? now : entity.crashedAt;
@@ -131,7 +132,13 @@ export class MikroOrmRoundRepository implements RoundRepository {
   async createNext(): Promise<Round> {
     const id = `round-${Date.now()}`;
     const fairness = ProvablyFair.createRound(serverSeedForRound(id), nonceForRound(id));
-    const round = new Round(id, fairness.crashPoint, fairness.serverSeedHash, fairness.nonce);
+    const round = new Round(
+      id,
+      fairness.crashPoint,
+      fairness.serverSeedHash,
+      fairness.nonce,
+      fairness.serverSeed,
+    );
     await this.saveCurrent(round);
     return round;
   }
@@ -157,7 +164,7 @@ export class MikroOrmRoundRepository implements RoundRepository {
   async getHistory(limit: number): Promise<CompletedRoundRecord[]> {
     const rounds = await this.em.fork().find(
       RoundEntity,
-      { serverSeed: { $ne: null } as any },
+      { crashedAt: { $ne: null } as any },
       { orderBy: { crashedAt: "DESC" }, limit },
     );
     return rounds.map((round) => this.toCompletedRecord(round));
@@ -166,7 +173,7 @@ export class MikroOrmRoundRepository implements RoundRepository {
   async getCompleted(roundId: string): Promise<CompletedRoundRecord | undefined> {
     const round = await this.em.fork().findOne(RoundEntity, {
       id: roundId,
-      serverSeed: { $ne: null } as any,
+      crashedAt: { $ne: null } as any,
     });
     return round ? this.toCompletedRecord(round) : undefined;
   }
@@ -214,7 +221,7 @@ export class MikroOrmRoundRepository implements RoundRepository {
     );
     const rounds = bets.map((bet) => ({
       round: this.toDomain(bet.round).toSnapshot(),
-      completed: bet.round.serverSeed ? this.toCompletedRecord(bet.round) : undefined,
+      completed: bet.round.crashedAt ? this.toCompletedRecord(bet.round) : undefined,
     }));
 
     return toPlayerBetHistory(rounds, playerId, limit);
@@ -238,7 +245,7 @@ export class MikroOrmRoundRepository implements RoundRepository {
         autoCashoutMultiplierBps: bet.autoCashoutMultiplierBps ?? undefined,
         cashoutTrigger: bet.cashoutTrigger ?? undefined,
       })),
-    });
+    }, entity.serverSeed ?? "");
   }
 
   toCompletedRecord(entity: RoundEntity): CompletedRoundRecord {
@@ -263,6 +270,7 @@ export class MikroOrmRoundRepository implements RoundRepository {
     entity.crashMultiplierBps = snapshot.crashMultiplierBps;
     entity.houseEdgeBps = 100;
     entity.serverSeedHash = snapshot.serverSeedHash ?? "";
+    entity.serverSeed = round.serverSeed || entity.serverSeed;
     entity.nonce = snapshot.nonce ?? snapshot.id;
     entity.createdAt = now;
     entity.updatedAt = now;
@@ -291,7 +299,7 @@ export class MikroOrmRoundRepository implements RoundRepository {
   private async getCompletedRoundEntities(limit: number): Promise<RoundEntity[]> {
     return this.em.fork().find(
       RoundEntity,
-      { serverSeed: { $ne: null } as any },
+      { crashedAt: { $ne: null } as any },
       {
         orderBy: { crashedAt: "DESC" },
         limit,

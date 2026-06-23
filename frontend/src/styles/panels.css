@@ -1,0 +1,155 @@
+.panel {
+  padding: 16px;
+}
+
+.right-rail {
+  align-content: start;
+  min-width: 0;
+}
+
+.insights-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.leaderboard-panel {
+  grid-column: 1 / -1;
+}
+
+.current-bets {
+  max-height: 220px;
+  overflow: auto;
+}
+
+.panel h2 {
+  margin: 0 0 14px;
+  font-size: 1rem;
+}
+
+form,
+label,
+.dev-controls {
+  display: grid;
+  gap: 10px;
+}
+
+.controls {
+  display: grid;
+  gap: 12px;
+}
+
+input,
+select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  color: #f6f7fb;
+  background: #090b11;
+  padding: 0 12px;
+}
+
+.auto-bet-box {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.auto-bet-grid {
+  display: grid;
+  gap: 10px;
+}
+
+input[type="checkbox"] {
+  width: 18px;
+  min-height: 18px;
+  accent-color: #46f19c;
+}
+
+.check-row {
+  grid-template-columns: 18px 1fr;
+  align-items: center;
+}
+
+.cashout {
+  background: #f5c84c;
+}
+
+.ready-button {
+  background: #46f19c;
+  color: #071009;
+}
+
+.status {
+  min-height: 24px;
+  color: #a8b0c4;
+}
+
+.status.accepted {
+  color: #46f19c;
+}
+
+.status.rejected {
+  color: #ff5b6e;
+}
+
+dl {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 8px;
+  margin: 0;
+}
+
+dt {
+  color: #a8b0c4;
+}
+
+dd {
+  margin: 0;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.bets ul {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.bets li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.bets li span {
+  overflow-wrap: anywhere;
+}
+
+.bets em {
+  justify-self: end;
+  color: #46f19c;
+  font-style: normal;
+}
+
+.bets li strong {
+  justify-self: end;
+}
+
+.bets small {
+  grid-column: 1 / -1;
+  color: #a8b0c4;
+}
+
+.verify {
+  min-width: 0;
+}
+

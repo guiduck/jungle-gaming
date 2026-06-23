@@ -55,4 +55,13 @@ describe("ProvablyFair", () => {
       ),
     ).toBe(true);
   });
+
+  test("keeps generated crash points inside the configured ceiling", () => {
+    for (let index = 0; index < 1000; index += 1) {
+      const round = ProvablyFair.createRound(`seed-${index}`, `round-${index}`, 100);
+
+      expect(round.crashPoint.multiplierBps).toBeGreaterThanOrEqual(10000);
+      expect(round.crashPoint.multiplierBps).toBeLessThan(140000);
+    }
+  });
 });

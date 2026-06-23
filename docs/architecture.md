@@ -77,6 +77,11 @@ experiencia de forma fluida.
   `autoCashoutMultiplierBps`. O Game Service persiste o alvo junto da aposta, avalia o alvo no
   runner durante `running` antes de publicar o proximo tick visivel e emite `cashout.accepted` com
   `cashoutTrigger=auto` quando o cashout automatico vence antes do crash.
+- Auto bet: automacao local do frontend que aciona os mesmos comandos REST usados pelo jogador. A
+  estrategia de valor fixo ou Martingale calcula somente o proximo valor da aposta no navegador; o
+  backend continua sendo a autoridade para aceitar aposta, validar saldo, aguardar pronto, efetivar
+  cashout, calcular payout e atualizar carteira. O stop-loss desliga a automacao no cliente quando
+  a perda acumulada atinge o limite configurado.
 
 ## Notas Operacionais
 
@@ -85,6 +90,14 @@ RabbitMQ, Keycloak, Kong, Game Service, Wallet Service e Frontend.
 
 A entrega local esperada e que o stack suba por Docker Compose a partir de arquivos versionados,
 incluindo import do realm do Keycloak, roteamento Kong e inicializacao dos servicos.
+
+O Kong aplica rate limiting declarativo em modo DB-less com politica local por IP. Essa protecao
+fica no gateway para cobrir Games e Wallets sem introduzir dependencia de rate limit no dominio dos
+servicos.
+
+O GitHub Actions mantem dois fluxos: `CI`, com validacao e smoke full-stack, e `Deploy VPS`, que
+roda apos CI bem-sucedido na `main` ou manualmente. O deploy usa SSH com `VPS_SSH_PRIVATE_KEY` para
+atualizar a stack Docker Compose na VPS de `jungle.gfig.space`.
 
 Estado atual importante: no perfil Docker/local, os providers ativos agora apontam para
 repositorios MikroORM/PostgreSQL por padrao. Os adapters em memoria continuam disponiveis somente
@@ -110,8 +123,10 @@ deterministico sem mudar as regras publicas, esse wrapper inicia o Games com
 
 Para jogar localmente como usuario, use o caminho normal `bun run docker:up`, abra
 `http://localhost:3000` e autentique pelo Keycloak com `player` / `player123`. Nesse modo a rodada
-nao fica presa a seed fixa de smoke: o Game Service usa o caminho regular de seed/nonce derivado do
-round, e o frontend apenas projeta estado autoritativo vindo do backend.
+nao fica presa a seed fixa de smoke: o Game Service gera uma seed secreta aleatoria para a rodada,
+publica apenas o `serverSeedHash` antes do crash e revela a seed completa somente no historico/
+endpoint de verificacao depois que a rodada termina. O `nonce` continua publico e derivado da
+rodada, e o frontend apenas projeta estado autoritativo vindo do backend.
 
 O frontend agora apresenta uma tela propria de boas-vindas/login antes de iniciar esse redirect. A
 aplicacao nao captura senha do Keycloak diretamente; o botao de login apenas inicia o fluxo OIDC
@@ -127,6 +142,10 @@ Quando o modo demo deterministico esta ativo, a escolha de seed/nonce da proxima
 locais de demo, mas a regra de crash continua sendo a mesma: compromisso SHA-256, derivacao
 HMAC-SHA256, multiplicador em basis points e verificacao posterior pelo endpoint de verify. O modo
 nao adiciona endpoint publico para controlar crash point nem para alterar saldo de carteira.
+
+O teto local de crash permanece abaixo de `14.00x`: resultados brutos acima desse teto sao
+remapeados deterministicamente para dentro do intervalo permitido usando outra fatia do HMAC, em vez
+de serem fixados em `14.00x`.
 
 Os servicos emitem logs concisos de ciclo de vida usando o logger do NestJS: modo de startup,
 transicoes de rodada, efeitos de Wallet, publish/consume RabbitMQ, rejeicoes de auth e resultados

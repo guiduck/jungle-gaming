@@ -12,7 +12,7 @@ import {
   GAME_WALLET_GATEWAY,
   ROUND_REPOSITORY,
 } from "./ports/game-ports";
-import { serverSeedForRound } from "./round-seed";
+import { legacyPredictableServerSeedForRound } from "./round-seed";
 import { formatLogEvent } from "../infrastructure/system/log-event";
 import type {
   Clock,
@@ -414,7 +414,7 @@ export class GameStateService {
       id: round.id,
       crashMultiplierBps: round.crashPoint.multiplierBps,
       serverSeedHash: round.serverSeedHash,
-      serverSeed: serverSeedForRound(round.id),
+      serverSeed: round.serverSeed || legacyPredictableServerSeedForRound(round.id),
       nonce: round.nonce,
       houseEdgeBps: HOUSE_EDGE_BPS,
       formula: VERIFICATION_FORMULA,
@@ -423,10 +423,11 @@ export class GameStateService {
   }
 
   private async requestCashedOutPayouts(round: Round): Promise<void> {
-    await Promise.all(round.toSnapshot().bets
+    const payoutRequests = round.toSnapshot().bets
       .filter((bet) => bet.status === "cashed_out" && bet.payoutCents && bet.cashoutMultiplierBps)
-      .map((bet) =>
-        this.walletGateway.requestPayoutCredit({
+      .map((bet) => ({
+        bet,
+        request: {
           idempotencyKey: `payout-credit:${round.id}:${bet.id}`,
           playerId: bet.playerId,
           roundId: round.id,
@@ -434,18 +435,22 @@ export class GameStateService {
           amountCents: bet.payoutCents ?? 0,
           cashoutMultiplierBps: bet.cashoutMultiplierBps ?? 0,
           occurredAt: this.clock.now().toISOString(),
-        }).then((result) => {
-          this.logger.log(formatLogEvent("wallet.payout.result", {
-            roundId: round.id,
-            betId: bet.id,
-            playerId: bet.playerId,
-            amountCents: bet.payoutCents ?? 0,
-            idempotencyKey: result.idempotencyKey,
-            result: result.status,
-            reason: result.reason,
-          }));
-        }),
-      ));
+        },
+      }));
+
+    await Promise.all(payoutRequests.map(async ({ bet, request }) => {
+      const result = await this.walletGateway.requestPayoutCredit(request);
+
+      this.logger.log(formatLogEvent("wallet.payout.result", {
+        roundId: round.id,
+        betId: bet.id,
+        playerId: bet.playerId,
+        amountCents: request.amountCents,
+        idempotencyKey: result.idempotencyKey,
+        result: result.status,
+        reason: result.reason,
+      }));
+    }));
   }
 
   private async refundLateBetDebit(request: WalletEffectRequest): Promise<void> {

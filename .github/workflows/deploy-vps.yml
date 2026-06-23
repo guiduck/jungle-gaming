@@ -1,0 +1,50 @@
+name: Deploy VPS
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-vps-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  VPS_HOST: ${{ vars.VPS_HOST || '216.158.236.156' }}
+  VPS_USER: ${{ vars.VPS_USER || 'root' }}
+  VPS_PATH: ${{ vars.VPS_PATH || '/srv/projects/jungle-gaming' }}
+
+jobs:
+  deploy:
+    name: Deploy to jungle.gfig.space
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/jungle_vps
+          chmod 600 ~/.ssh/jungle_vps
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
+
+      - name: Deploy Compose stack
+        run: |
+          ssh -i ~/.ssh/jungle_vps "$VPS_USER@$VPS_HOST" "cd '$VPS_PATH' && git fetch --all --prune && git checkout master && git pull --ff-only && npm install --no-audit --no-fund && docker compose build games wallets games-migrations wallets-migrations frontend && docker compose up -d --remove-orphans"
+
+      - name: Verify public URL
+        run: |
+          curl --fail --retry 10 --retry-delay 6 --retry-all-errors https://jungle.gfig.space/

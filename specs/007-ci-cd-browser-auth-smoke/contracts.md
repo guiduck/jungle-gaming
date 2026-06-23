@@ -139,7 +139,7 @@ Responsibilities:
 - Verify enough API/Kong health to make browser smoke meaningful.
 - Launch a fresh non-persistent Chromium browser context.
 - Open `http://localhost:3000`.
-- Prove the unauthenticated/login-required state appears with no `jungle.accessToken`.
+- Prove the public unauthenticated welcome state appears with no `jungle.accessToken`.
 - Follow the normal frontend Keycloak login entry point.
 - Log in through real Keycloak using local demo credentials `player` / `player123`.
 - Wait for redirect/callback back to the frontend.
@@ -245,6 +245,8 @@ Allowed artifacts:
 Allowed:
 
 ```tsx
+data-smoke="public-welcome"
+data-smoke="welcome-modal"
 data-smoke="login-required-modal"
 data-smoke="wallet-display"
 data-smoke="round-phase"

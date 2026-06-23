@@ -110,7 +110,7 @@ Required checkpoint names:
 
 - `clean-context`
 - `frontend-loaded`
-- `login-required-visible`
+- `public-welcome-visible`
 - `keycloak-entry-visible`
 - `keycloak-ready`
 - `keycloak-login-page`
@@ -173,6 +173,8 @@ Fields:
 
 Suggested values:
 
+- `public-welcome`
+- `welcome-modal`
 - `login-required-modal`
 - `wallet-display`
 - `round-phase`

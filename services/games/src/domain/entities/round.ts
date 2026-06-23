@@ -34,9 +34,10 @@ export class Round {
     public readonly crashPoint: CrashPoint,
     public readonly serverSeedHash: string,
     public readonly nonce: string,
+    public readonly serverSeed = "",
   ) {}
 
-  static rehydrate(snapshot: RoundSnapshot): Round {
+  static rehydrate(snapshot: RoundSnapshot, serverSeed = ""): Round {
     if (!snapshot.serverSeedHash || !snapshot.nonce) {
       throw new DomainError("Round persistence snapshot is missing verification metadata");
     }
@@ -46,6 +47,7 @@ export class Round {
       CrashPoint.fromBasisPoints(snapshot.crashMultiplierBps),
       snapshot.serverSeedHash,
       snapshot.nonce,
+      serverSeed,
     );
     round.statusValue = snapshot.status;
     snapshot.bets.forEach((bet) => round.bets.push(Bet.rehydrate(bet)));

@@ -121,8 +121,8 @@ Acceptance criteria:
 
 - Given the Docker demo stack is healthy, when the browser smoke starts, then it launches a clean
   browser context with no existing `jungle.accessToken`.
-- Given no browser session exists, then the smoke verifies the login-required modal appears before
-  authentication.
+- Given no browser session exists, then the smoke verifies the public welcome screen appears before
+  authentication and does not auto-redirect to Keycloak.
 - Given the smoke clicks or follows the Keycloak login entry point, then it completes the real
   Keycloak authorization-code/PKCE flow using `player` / `player123`.
 - Given login succeeds, then the frontend stores a valid authenticated session through the normal
@@ -205,7 +205,7 @@ Acceptance criteria:
   changing the meaning of `npm run demo:up` or `npm run smoke:api`.
 - **FR-008**: Browser smoke must begin from a clean browser context with no existing
   `jungle.accessToken` and no reliance on a pre-authenticated browser session.
-- **FR-009**: Browser smoke must verify the login-required modal appears before authentication.
+- **FR-009**: Browser smoke must verify the public welcome screen appears before authentication.
 - **FR-010**: Browser smoke must use Playwright/Chromium to complete the real local Keycloak
   authorization-code/PKCE flow with `player` / `player123`.
 - **FR-011**: Browser smoke must verify representative authenticated game-shell content, including
@@ -285,7 +285,7 @@ Acceptance criteria:
 - CI catches typecheck, test, build, and Compose configuration regressions in the main project
   layers with clear job names and reproducible commands.
 - A local maintainer can run a documented browser-auth smoke after `npm run demo:up` and prove the
-  login-required modal, real Keycloak PKCE login, and authenticated game shell.
+  public welcome screen, real Keycloak PKCE login, and authenticated game shell.
 - Browser auth smoke failures distinguish Keycloak readiness, frontend/API availability, login,
   and WebSocket problems without leaking secrets.
 - Existing `npm run demo:up` and `npm run smoke:api` remain valid and unchanged in meaning.

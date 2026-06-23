@@ -109,6 +109,7 @@ export class InMemoryRoundRepository implements RoundRepository {
       CrashPoint.fromBasisPoints(fairness.crashPoint.multiplierBps),
       fairness.serverSeedHash,
       fairness.nonce,
+      fairness.serverSeed,
     );
   }
 

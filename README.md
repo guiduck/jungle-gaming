@@ -1,165 +1,289 @@
-# Jungle Crash Game
+# Goat Run
 
-Este projeto e um jogo de crash multiplayer em tempo real feito para o desafio full-stack senior da
+[![Stack](https://img.shields.io/badge/stack-NestJS%20%2B%20React%20%2B%20RabbitMQ-46f19c.svg)](#tech-stack)
+[![Tests](https://img.shields.io/badge/tests-Bun%20%2B%20Vitest%20%2B%20Playwright-4b32c3.svg)](#validacao)
+[![Deploy](https://img.shields.io/badge/deploy-Docker%20Compose%20%2B%20GitHub%20Actions-f5c84c.svg)](#ci-e-deploy)
+
+**Goat Run** e um Crash Game multiplayer em tempo real feito para o desafio full-stack da
 Jungle Gaming.
 
-A ideia do jogo e simples: uma cabra sobe uma montanha enquanto o multiplicador aumenta. Voce aposta
-antes da subida comecar e tenta sacar antes da rodada "crashar". O backend e quem manda na rodada, na
-aposta, no saque, na carteira e na verificacao provably fair.
+A regra e simples: Nina, a cabra, sobe a montanha enquanto o multiplicador sobe junto. O jogador
+aposta antes da subida, marca pronto e precisa sacar antes do crash. Se sacar a tempo, recebe
+`aposta x multiplicador`; se esperar demais, perde a aposta.
 
-## O Que Tem Aqui
+O servidor e autoritativo: ele controla rodada, aposta, cashout, carteira, RabbitMQ, WebSocket e
+verificacao provably fair. O frontend e uma projecao jogavel e animada desse estado.
 
-- Games service: NestJS, regras do jogo, rodadas, apostas, cashout, WebSocket, Swagger e testes.
-- Wallets service: NestJS, carteira, debito de aposta, credito de premio, RabbitMQ, Swagger e
-  testes.
-- Frontend: Vite, React, Tailwind CSS, TanStack Query, Zustand, login Keycloak, tela do jogo,
-  historico, ranking, minhas apostas e painel de verificacao.
-- Infra local: Docker Compose com PostgreSQL, RabbitMQ, Keycloak, Kong, Games, Wallets, migracoes e
-  frontend.
+## Table of Contents
 
-## Antes De Comecar
+- [Demo](#demo)
+- [Como Rodar](#como-rodar)
+  - [Pre-requisitos](#pre-requisitos)
+  - [Modo Demo](#modo-demo)
+  - [Modo Producao Local](#modo-producao-local)
+- [Como Jogar](#como-jogar)
+- [Tech Stack](#tech-stack)
+- [Arquitetura](#arquitetura)
+- [Extras Entregues](#extras-entregues)
+- [Trechos de Implementacao](#trechos-de-implementacao)
+- [Validacao](#validacao)
+- [Links Locais](#links-locais)
+- [CI e Deploy](#ci-e-deploy)
+- [Documentacao](#documentacao)
+- [O Que Ficou Para Depois](#o-que-ficou-para-depois)
 
-Pense nisso como arrumar a mesa antes de brincar:
+## Demo
 
-1. Abra o Docker Desktop.
-2. Espere o Docker Desktop ficar pronto.
-3. Instale Node.js 20 ou mais novo, se ainda nao tiver.
-4. Tenha o npm disponivel.
-5. Abra um terminal nesta pasta do projeto.
+Depois de subir o projeto, acesse:
 
-Se for a primeira vez neste computador, rode:
+```text
+http://localhost:3000
+```
+
+Credenciais do jogador:
+
+```text
+Usuario: player
+Senha: player123
+```
+
+O modo demo usa rodada deterministica para smoke test. Por isso o crash padrao aparece em `4.66x`.
+No modo producao local, as rodadas usam seeds aleatorias do servidor e o resultado varia.
+
+## Como Rodar
+
+### Pre-requisitos
+
+- Docker Desktop aberto e pronto.
+- Node.js 20 ou mais novo.
+- Terminal aberto na raiz do projeto.
+
+Instale as dependencias uma vez:
 
 ```bash
 npm install
 ```
 
-Voce nao precisa copiar `.env`. O projeto ja vem com os arquivos locais necessarios:
+Nao precisa copiar `.env` para rodar com Docker Compose. O projeto usa os arquivos locais do desafio:
 
 - `services/games/.env.example`
 - `services/wallets/.env.example`
 
-Esses arquivos usam credenciais locais de desafio, como `admin/admin`, e nao guardam segredo real de
-producao.
+### Modo Demo
 
-## Modo Demo
-
-Use este modo para avaliar o projeto, mostrar para alguem ou conferir se tudo esta funcionando do
-mesmo jeito em toda execucao.
-
-### Como Rodar
-
-1. Abra o Docker Desktop.
-2. No terminal, dentro da pasta do projeto, rode:
+Use este modo para apresentacao e validacao repetivel:
 
 ```bash
 npm run demo:up
 ```
 
-3. Espere o terminal terminar e mostrar os links.
-4. Abra o jogo no navegador:
+Ele sobe PostgreSQL, RabbitMQ, Keycloak, Kong, Games, Wallets, Frontend e migrations.
 
-```text
-http://localhost:3000
-```
+### Modo Producao Local
 
-5. Entre com:
-
-```text
-Usuario: player
-Senha: player123
-```
-
-### O Que O Modo Demo Faz
-
-Ele liga tudo para voce:
-
-- banco PostgreSQL;
-- RabbitMQ;
-- Keycloak;
-- Kong;
-- Games service;
-- Wallets service;
-- frontend;
-- migracoes do banco.
-
-Ele tambem liga rodadas deterministicas. Isso quer dizer: a rodada demo sempre pode ser conferida do
-mesmo jeito. Com a configuracao padrao, o crash deterministico verifica em `4.66x`.
-
-### Como Conferir A Demo
-
-Depois que `npm run demo:up` terminar, rode:
-
-```bash
-npm run smoke:api
-```
-
-Se quiser testar tambem o login real no navegador com Playwright, rode:
-
-```bash
-npm run smoke:browser
-```
-
-Se o Playwright disser que falta o Chromium, rode uma vez:
-
-```bash
-npx playwright install chromium
-```
-
-## Modo Producao Local
-
-Este modo e para jogar localmente de um jeito mais parecido com producao. Ainda roda no seu
-computador com Docker Compose, mas as rodadas nao ficam presas no resultado deterministico da demo.
-
-### Como Rodar
-
-1. Abra o Docker Desktop.
-2. No terminal, dentro da pasta do projeto, rode:
+Use este modo para jogar localmente sem crash fixo:
 
 ```bash
 npm run docker:up
 ```
 
-Se voce usa Bun e prefere ele, tambem pode rodar:
+Se quiser trocar de modo, pare a stack atual antes:
 
 ```bash
-bun run docker:up
+npm run docker:down
 ```
 
-3. Abra:
+## Como Jogar
+
+1. Abra `http://localhost:3000`.
+2. Clique em **Entrar com Keycloak**.
+3. Faca login com `player` / `player123`.
+4. Escolha o valor da aposta.
+5. Opcionalmente configure auto-cashout ou Auto Bet.
+6. Aposte enquanto a rodada estiver aberta.
+7. Clique em **Pronto para comecar**.
+8. Saque antes do crash.
+
+Atalhos:
+
+- `H`: mostrar comandos.
+- `B`: apostar.
+- `C`: cashout.
+- `A`: ligar/desligar auto-cashout antes de apostar.
+- `[` e `]`: diminuir/aumentar a aposta.
+
+## Tech Stack
+
+- **Frontend**: Vite, React, TypeScript, TanStack Query, Zustand, CSS modular por area.
+- **Backend**: NestJS, TypeScript strict, DDD, MikroORM.
+- **Banco**: PostgreSQL 18.
+- **Mensageria**: RabbitMQ.
+- **Gateway**: Kong DB-less.
+- **Auth**: Keycloak com Authorization Code + PKCE.
+- **Tempo real**: NestJS WebSocket Gateway + Socket.IO client.
+- **Testes**: Bun test runner, Vitest, Playwright smoke.
+- **Infra**: Docker Compose, GitHub Actions, deploy opcional para VPS.
+
+## Arquitetura
 
 ```text
-http://localhost:3000
+frontend/                # Vite React app
+  src/
+    components/          # telas, cena, modais e paineis
+    components/game-panels/
+    hooks/               # queries, mutations, socket, shortcuts, dialogos e animacao
+    services/            # API, auth, auto-bet, formatadores
+    stores/              # Zustand
+    styles/              # CSS por area
+
+services/
+  games/
+    src/domain/          # Round, Bet, value objects e regras do jogo
+    src/application/     # casos de uso, ports e runner
+    src/infrastructure/  # MikroORM, RabbitMQ, WebSocket publisher
+    src/presentation/    # controllers, DTOs, guards, gateway
+  wallets/
+    src/domain/          # Wallet, Money, PlayerId
+    src/application/     # operacoes e ports
+    src/infrastructure/  # MikroORM, RabbitMQ, system adapters
+    src/presentation/    # controllers e guards
+
+docker/                  # Kong, Keycloak e PostgreSQL init
+scripts/                 # demo e smoke checks
+specs/                   # artefatos Spec Kit
+docs/                    # arquitetura, handoff, roadmap e decisoes
 ```
 
-4. Entre com:
+Separacao principal:
 
-```text
-Usuario: player
-Senha: player123
+- `Game Service` decide rodada, apostas, crash, cashout e verificacao.
+- `Wallet Service` decide saldo, debito, credito e idempotencia monetaria.
+- Game e Wallet conversam por RabbitMQ no fluxo principal.
+- Dinheiro usa centavos inteiros; multiplicadores usam basis points.
+
+## Extras Entregues
+
+Extras pedidos no desafio e entregues neste projeto:
+
+- **Auto cashout**: jogador define multiplicador alvo; o servidor executa antes do crash.
+- **Auto Bet**: frontend suporta valor fixo, Martingale e stop-loss configuravel.
+- **Leaderboard**: ranking read-only por payout/multiplicador realizado.
+- **Seed deterministica para testes**: modo demo reproduz crash `4.66x` para smoke estavel.
+- **CI pipeline**: GitHub Actions com typecheck, testes, build, Compose build e smoke full-stack.
+- **Playwright**: `npm run smoke:browser` valida welcome publico, Keycloak PKCE e shell autenticada.
+- **Rate limiting**: Kong aplica limite por IP no gateway.
+- **Deploy opcional VPS**: workflow manual/pos-CI para `jungle.gfig.space`.
+- **Polish de UX**: Nina, montanha procedural, atalhos, modal de comandos e layout responsivo.
+
+Extras explicitamente deixados para depois:
+
+- Outbox/inbox transacional.
+- OpenTelemetry + Prometheus + Grafana.
+- Efeitos sonoros.
+- Storybook.
+
+## Trechos de Implementacao
+
+Auto cashout fica no dominio do jogo, nao no frontend:
+
+```ts
+// services/games/src/domain/entities/round.ts
+autoCashOutEligibleBets(currentMultiplierBps: number): CashoutResult[] {
+  if (this.statusValue !== "running") {
+    return [];
+  }
+
+  return this.bets
+    .filter((bet) => bet.canAutoCashOut(currentMultiplierBps, this.crashPoint.multiplierBps))
+    .map((bet) => {
+      const multiplierBps = bet.autoCashoutMultiplierBps ?? currentMultiplierBps;
+      const payout = bet.cashOut(multiplierBps, "auto");
+      return {
+        betId: bet.id,
+        playerId: bet.playerId.value,
+        multiplierBps,
+        payoutCents: payout.cents,
+        cashoutTrigger: "auto" as const,
+        autoCashoutMultiplierBps: bet.autoCashoutMultiplierBps,
+      };
+    });
+}
 ```
 
-### Diferenca Entre Demo E Producao Local
+Auto Bet e Martingale ficam como regra pequena e testavel no frontend:
 
-- `npm run demo:up`: melhor para avaliacao, porque usa rodada deterministica e facilita conferir o
-  resultado.
-- `npm run docker:up`: melhor para jogo local normal, porque usa pontos de crash gerados pelo
-  servidor.
+```ts
+// frontend/src/services/auto-bet.ts
+const nextAmountCents =
+  config.strategy === "martingale" && profitCents < 0
+    ? clampAutoBetAmount(config.currentAmountCents * 2)
+    : config.baseAmountCents;
 
-Nos dois modos, o jogo usa PostgreSQL, RabbitMQ, Keycloak, Kong, migracoes automaticas e backend
-autoritativo.
+return {
+  ...config,
+  enabled: config.enabled && !reachedStopLoss,
+  accumulatedLossCents,
+  currentAmountCents: reachedStopLoss ? config.baseAmountCents : nextAmountCents,
+};
+```
+
+Rate limiting e smoke browser ficam versionados na infra/CI:
+
+```yaml
+# docker/kong/kong.yml
+plugins:
+  - name: rate-limiting
+    config:
+      minute: 120
+      policy: local
+      limit_by: ip
+```
+
+```yaml
+# .github/workflows/ci.yml
+- name: Start deterministic demo stack
+  run: npm run demo:up
+- name: Run API smoke
+  run: npm run smoke:api
+- name: Run browser auth smoke
+  run: npm run smoke:browser
+```
+
+## Validacao
+
+Comandos principais:
+
+```bash
+npx tsc -p services/games/tsconfig.json --noEmit
+npx tsc -p services/wallets/tsconfig.json --noEmit
+npx tsc -p frontend/tsconfig.json --noEmit
+npm --workspace frontend run test
+npm --workspace frontend run build
+npm --workspace @crash/games run test
+npm --workspace @crash/games run test:e2e
+npm --workspace @crash/wallets run test
+npm --workspace @crash/wallets run test:e2e
+npm run smoke:api
+npm run smoke:browser
+docker compose config --quiet
+```
+
+Se o Playwright pedir Chromium:
+
+```bash
+npx playwright install chromium
+```
 
 ## Links Locais
 
-Depois de subir o projeto, estes links ficam disponiveis:
-
 - Jogo: `http://localhost:3000`
+- Kong: `http://localhost:8000`
 - Swagger Games: `http://localhost:4001/docs`
 - Swagger Wallets: `http://localhost:4002/docs`
-- Kong: `http://localhost:8000`
 - Keycloak: `http://localhost:8080`
 - RabbitMQ Management: `http://localhost:15672`
 
-Credenciais principais:
+Credenciais uteis:
 
 ```text
 Jogo:
@@ -175,109 +299,41 @@ Usuario: admin
 Senha: admin
 ```
 
-## Como Jogar
+## CI e Deploy
 
-1. Abra o jogo.
-2. Faca login.
-3. Escolha o valor da aposta.
-4. Clique para apostar enquanto a rodada estiver aberta.
-5. Depois que a aposta for aceita, clique em **Pronto para comecar**.
-6. Quando a cabra estiver subindo, clique em cashout antes do crash.
+O projeto tem dois workflows principais:
 
-Atalhos do teclado:
+- `CI`: roda frontend, services, smoke scripts, Compose build e smoke full-stack.
+- `Deploy VPS`: atualiza a VPS por SSH, reconstrui a stack Docker Compose e verifica
+  `https://jungle.gfig.space/`.
 
-- `H`: abre ou fecha o modal de comandos.
-- `B`: aposta enquanto a rodada esta aberta.
-- `C`: faz cashout durante a subida.
-- `A`: liga ou desliga o auto-cashout antes da aposta ativa.
-- `[` e `]`: diminuem ou aumentam a aposta em R$ 1,00.
+Para o deploy VPS, configure:
 
-## Como Parar
+- secret `VPS_SSH_PRIVATE_KEY`
+- variavel opcional `VPS_HOST` (padrao `216.158.236.156`)
+- variavel opcional `VPS_USER` (padrao `root`)
+- variavel opcional `VPS_PATH` (padrao `/opt/jungle-gaming`)
 
-Para desligar os containers sem apagar os dados:
+## Documentacao
 
-```bash
-npm run docker:down
-```
+- `docs/overview.md`: visao geral.
+- `docs/architecture.md`: arquitetura.
+- `docs/domain-model.md`: regras de dominio.
+- `docs/architecture-decisions.md`: decisoes tecnicas.
+- `docs/handoff.md`: estado atual e validacoes.
+- `docs/roadmap.md`: roadmap.
+- `docs/next-spec-prompt.md`: proximo prompt opcional.
 
-Para apagar containers, imagens e volumes locais:
+## O Que Ficou Para Depois
 
-```bash
-npm run docker:prune
-```
+O projeto esta pronto para revisao local do desafio e inclui extras relevantes. Ainda nao e uma
+producao hospedada com hardening completo.
 
-Use `npm run docker:prune` so quando quiser limpar tudo e comecar do zero.
+Ficou para evolucao futura:
 
-## Se Algo Der Errado
-
-Se aparecer erro dizendo que o Docker nao esta disponivel:
-
-1. Abra o Docker Desktop.
-2. Espere ele ficar pronto.
-3. Rode o comando de novo.
-
-Se o Keycloak demorar na primeira vez, espere um pouco. Ele costuma ser mais lento no primeiro boot.
-Para olhar o estado dos containers:
-
-```bash
-docker compose ps
-```
-
-Para ver logs do Keycloak:
-
-```bash
-docker compose logs --tail 120 keycloak
-```
-
-Se alguma porta ja estiver ocupada, feche o programa que esta usando a porta ou mude esse programa de
-porta. O projeto usa:
-
-- `3000` frontend
-- `4001` Games
-- `4002` Wallets
-- `5432` PostgreSQL
-- `5672` RabbitMQ
-- `8000`, `8001`, `8443` Kong
-- `8080` Keycloak
-- `15672` RabbitMQ Management
-
-## Comandos De Validacao
-
-Caminho principal:
-
-```bash
-npm run demo:up
-npm run smoke:api
-npm run smoke:browser
-```
-
-Checagens uteis para desenvolvimento:
-
-```bash
-npx tsc -p services/games/tsconfig.json --noEmit
-npx tsc -p services/wallets/tsconfig.json --noEmit
-npx tsc -p frontend/tsconfig.json --noEmit
-npm --workspace frontend run test
-npm --workspace frontend run build
-npm --workspace @crash/games run test
-npm --workspace @crash/games run test:e2e
-npm --workspace @crash/wallets run test
-npm --workspace @crash/wallets run test:e2e
-docker compose config --quiet
-```
-
-## Mapa Da Documentacao
-
-- `docs/overview.md`: visao geral do produto.
-- `docs/architecture.md`: arquitetura e stack.
-- `docs/domain-model.md`: entidades, valores e regras do dominio.
-- `docs/architecture-decisions.md`: decisoes arquiteturais.
-- `docs/handoff.md`: status atual e notas de validacao.
-- `docs/roadmap.md`: fases concluidas e trabalho adiado.
-- `docs/next-spec-prompt.md`: proximo prompt opcional de Spec Kit.
-
-## O Que Ainda Ficou Para Depois
-
-O projeto esta pronto para revisao local do desafio, mas nao e uma implantacao hospedada de producao.
-Ficaram para depois: outbox/inbox transacional, mais testes Playwright de regressao, observabilidade
-mais profunda, efeitos sonoros e hardening para deploy hospedado.
+- outbox/inbox transacional;
+- observabilidade profunda;
+- suite Playwright mais ampla;
+- efeitos sonoros;
+- Storybook;
+- hardening operacional completo da VPS.

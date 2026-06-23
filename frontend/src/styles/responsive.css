@@ -1,0 +1,132 @@
+@media (max-width: 820px) {
+  main {
+    padding: 16px;
+  }
+
+  .topbar,
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .layout {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .primary-column,
+  .right-rail {
+    display: contents;
+  }
+
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .game-scene {
+    order: 1;
+    min-height: 420px;
+  }
+
+  .right-rail {
+    order: 2;
+  }
+
+  .controls {
+    order: 2;
+  }
+
+  .round-summary {
+    order: 3;
+  }
+
+  .current-bets {
+    order: 4;
+  }
+
+  .history-panel {
+    order: 5;
+  }
+
+  .insights-grid {
+    order: 6;
+    grid-template-columns: 1fr;
+  }
+
+  .scene-header {
+    align-items: flex-start;
+    flex-direction: row;
+    padding: 18px;
+  }
+
+  .scene-header strong {
+    flex: 0 1 auto;
+    margin-left: auto;
+    font-size: clamp(2.8rem, 16vw, 4.6rem);
+    text-align: right;
+  }
+
+  .scene-feedback {
+    top: 66px;
+    left: 18px;
+    max-width: min(210px, 42vw);
+    font-size: 0.82rem;
+  }
+
+  .mountain {
+    inset: 136px 22px 26px;
+  }
+
+  .mountain-world {
+    --mountain-zoom-boost: 1.18;
+  }
+
+  .scene-debug {
+    left: clamp(10px, calc(var(--debug-x) - 146px), calc(100% - 146px));
+    top: clamp(10px, calc(var(--debug-y) + 12px), calc(100% - 104px));
+    width: 136px;
+    padding: 7px 8px;
+    font-size: 0.66rem;
+  }
+
+  .top-actions,
+  .wallet {
+    width: 100%;
+  }
+
+  .top-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .wallet {
+    min-width: auto;
+  }
+
+  .dialogue-system {
+    bottom: 16px;
+    width: calc(100% - 24px);
+  }
+
+  .dialogue-box,
+  .welcome-modal,
+  .command-header,
+  .command-content,
+  .command-footer {
+    padding: 12px;
+  }
+
+  .dialogue-text {
+    min-height: 74px;
+    font-size: 0.92rem;
+  }
+
+  .command-overlay {
+    padding: 12px;
+  }
+
+  .command-grid {
+    grid-template-columns: 1fr;
+  }
+}

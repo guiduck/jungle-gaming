@@ -292,6 +292,9 @@ crash favoravel, o que reduz confianca e reprodutibilidade.
 Consequencias:
 
 - `bun run docker:up` continua sendo o caminho normal e deixa o modo deterministico desligado.
+- No caminho normal, o Game Service gera seed secreta aleatoria para cada rodada, guarda a seed no
+  backend e expoe apenas o hash antes do crash; a seed completa so e revelada depois da rodada para
+  verificacao.
 - `npm run demo:up` e explicitamente um fluxo local de avaliacao e imprime URLs, credenciais e
   proximos comandos.
 - A seed/nonce deterministica preserva SHA-256/HMAC-SHA256 e a verificacao posterior; nao ha novo

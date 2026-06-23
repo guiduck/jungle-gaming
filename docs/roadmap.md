@@ -161,9 +161,10 @@ Status:
   verifies the AMQP listener, Game/Wallet RabbitMQ clients retry transient first-boot connection
   refusal, Kong waits for Keycloak health, and `npm run demo:up`/`npm run smoke:api` pass from a
   clean Docker stack without manual service-order pauses.
-- Presentation polish is implemented as a frontend-only Phase 4 slice: a visual-novel-style
-  welcome/tutorial flow thanks the Jungle Gaming team, introduces Nina the climbing goat, uses
-  a login-required modal for missing sessions or API `401` responses with a Keycloak button plus
+- Presentation polish is implemented as a frontend-only Phase 4 slice: a public visual-novel-style
+  welcome/tutorial flow thanks the Jungle Gaming team, introduces Nina the climbing goat, keeps
+  anonymous visitors on the welcome page until they choose Keycloak login, uses a login-required
+  modal only for protected-session failures or API `401` responses with a Keycloak button plus
   10-second automatic redirect countdown, adds a command modal, and enables keyboard
   betting/cashout shortcuts without changing backend auth, gameplay, wallet,
   settlement, read models, or public API contracts. The friendly phase dialogue is scoped by the
@@ -199,6 +200,30 @@ Status:
 - A final June 22 shortcut hotfix is complete: the `C` cashout keyboard command works during a
   running round even when focus remains in the bet amount or auto-cashout input, while server-side
   cashout authority and the pending-bet guard remain unchanged.
+- A final maintainability closeout is complete: the frontend game shell panels were extracted from
+  `App.tsx` into focused presentational components, and Games payout-request preparation was made
+  more explicit. This is intentionally non-functional and preserves public API contracts,
+  RabbitMQ/WebSocket behavior, auth, wallet settlement, smoke selectors, and player-facing flow.
+- A June 23 provably fair correction is complete: demo mode remains intentionally deterministic at
+  `4.66x` for smoke validation, while normal local play now generates unrevealed random server
+  seeds, stores them server-side, publishes only `serverSeedHash` before crash, and reveals the seed
+  only after the completed round. Completed-round reads now key off `crashedAt`, so active rounds
+  with stored secret seeds do not appear as history.
+- Optional challenge extras are now implemented: Kong applies local per-IP rate limiting at the
+  gateway, the frontend offers Auto Bet with fixed-value and Martingale strategies plus
+  configurable stop-loss, and the automation still uses normal server-authoritative REST actions.
+- A player-facing privacy tweak is complete: the right-rail round summary no longer shows the active
+  crash point during `betting` or `running`; it reveals the value only after the crash/settlement
+  state.
+- A June 23 frontend organization refactor is complete: `App.tsx` now only coordinates auth/screen
+  selection, the authenticated game shell, public welcome, game panels, dialogue/shortcut behavior,
+  game queries/mutations/socket/animation hooks, and CSS areas are split into focused modules. This
+  is a maintainability-only change and preserves gameplay, auth, wallet, API, RabbitMQ, WebSocket,
+  and smoke behavior.
+- A README presentation polish pass is complete: the root README now uses `Goat Run` as the
+  top-level project name, adds badges and a linked table of contents, keeps setup/run instructions
+  concise, documents delivered challenge extras, and includes short implementation snippets without
+  becoming a long-form architecture document.
 
 Candidates:
 
@@ -206,8 +231,15 @@ Candidates:
   demo startup, production-like local startup, smoke commands, URLs, credentials, troubleshooting,
   and deferred work are documented in `README.md`. The runbook is now in Brazilian Portuguese with
   beginner-friendly steps for demo mode and production-like local mode.
-- If work continues after delivery, use a post-submission hardening pass for fresh full-stack smoke
-  evidence and any remaining production-readiness notes.
+- The README now explicitly explains how to run demo, production-like local mode, and both through
+  Docker Compose one at a time, plus why demo always shows the fixed `4.66x` crash.
+- The optional post-submission hardening pass is complete: fresh demo/API/browser validation
+  evidence was captured, the first-run public welcome login CTA remains clickable while Nina's
+  dialogue is visible, and input-focused `C` cashout works during running rounds.
+- The optional VPS deploy path is available through GitHub Actions. `Deploy VPS` runs manually or
+  after successful `CI` on `main`, uses `VPS_SSH_PRIVATE_KEY`, deploys the Compose stack to
+  `jungle.gfig.space`, and should be manually triggered after the GitHub secret and VPS path are
+  confirmed.
 - Defer transactional outbox/inbox, broader Playwright regression coverage, richer observability,
   and sound effects unless a later product requirement explicitly justifies them.
 
@@ -223,7 +255,9 @@ Status:
 - Complete. The implementation adds GitHub Actions push/PR validation, the additive
   `npm run smoke:browser` Playwright command, secret-safe browser-smoke diagnostics, stable
   non-visual smoke hooks, Compose image-build validation, and a required full-stack smoke job that
-  runs deterministic demo startup, API smoke, and browser Keycloak PKCE smoke.
+  runs deterministic demo startup, API smoke, and browser Keycloak PKCE smoke. A follow-up deploy
+  workflow now provides optional VPS deployment to `jungle.gfig.space` after successful `CI` on
+  `main` or by manual dispatch.
 
 Gate:
 
@@ -232,11 +266,13 @@ Gate:
 - CI builds the Compose service images and then runs deterministic full-stack startup,
   `npm run smoke:api`, and `npm run smoke:browser`.
 - CI collects Compose logs and Playwright screenshots when the full-stack smoke fails.
-- `npm run smoke:browser` validates the login-required modal, Keycloak PKCE login, authenticated
-  game shell, wallet/round/read panels, and useful failure diagnostics.
+- `npm run smoke:browser` validates the public welcome screen, Keycloak PKCE login,
+  authenticated game shell, wallet/round/read panels, and useful failure diagnostics.
 - The smoke handles Keycloak first-boot slowness and reports when Keycloak is unreachable instead
   of hanging indefinitely.
 - Existing `npm run demo:up` and `npm run smoke:api` keep their current meaning.
+- VPS deploy requires `VPS_SSH_PRIVATE_KEY` in GitHub secrets and assumes `/opt/jungle-gaming` on
+  the server unless `VPS_PATH` is configured.
 
 ## Phase 5. Release Readiness Closeout
 
@@ -250,12 +286,19 @@ Status:
 - Documentation closeout is complete enough for challenge submission. `README.md` now serves as
   the evaluator runbook, including environment defaults, demo mode, production-like local mode,
   validation commands, troubleshooting, URLs, credentials, and explicit deferred work.
-- A fresh `npm run demo:up`, `npm run smoke:api`, and optional `npm run smoke:browser` pass remains
-  the preferred final confidence check on the submitter machine.
+- A fresh `npm run demo:up`, `npm run smoke:api`, and `npm run smoke:browser` pass completed on
+  June 23, 2026 after refreshing the frontend container.
 - The latest frontend-only multiplier smoothness hotfix has build and focused test coverage; it
-  should be included in the final live browser smoke so the real Kong/Socket.IO path is observed.
+  is now covered by live browser observation through the real Kong/Socket.IO path.
 - The latest frontend-only `C` cashout shortcut hotfix should be included in the final live browser
-  smoke by placing a bet, leaving focus in a betting input, and pressing `C` during the climb.
+  smoke by placing a bet, leaving focus in a betting input, and pressing `C` during the climb; this
+  passed on June 23 after removing debounce from the cashout shortcut.
+- The latest public-welcome auth correction should be included in the final live browser smoke by
+  confirming anonymous visitors see the welcome/dialogue first and only reach the game after
+  Keycloak login; this passed on June 23.
+- The final maintainability closeout has focused frontend and Games typecheck/test/build coverage;
+  because it does not alter runtime contracts or Docker configuration, the preferred remaining
+  confidence pass is still the existing clean-stack demo/API/browser smoke sequence.
 
 Gate:
 
@@ -266,3 +309,10 @@ Gate:
 - Known non-goals and deferred bonuses are explicit.
 - Final validation commands and environment caveats are captured in `README.md` and
   `docs/handoff.md`.
+- Provably fair seed handling prevents public round IDs from predicting normal-mode crash points
+  before the server reveals the seed.
+- Active round UI does not disclose the crash point before the round is terminal.
+- Final internal quality changes are limited to componentization and readable service flow, with no
+  new feature scope.
+- No additional Spec Kit feature work is required unless evaluator feedback reveals a blocking
+  issue or the project intentionally resumes optional production hardening.

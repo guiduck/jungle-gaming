@@ -351,6 +351,7 @@ function createRound(id: string, status: "betting" | "running"): Round {
     CrashPoint.fromBasisPoints(fairness.crashPoint.multiplierBps),
     fairness.serverSeedHash,
     fairness.nonce,
+    fairness.serverSeed,
   );
 
   if (status === "running") {

@@ -1,6 +1,5 @@
 import { logFrontendEvent } from "./telemetry";
 
-const PLAYER_ID_KEY = "jungle.playerId";
 const ACCESS_TOKEN_KEY = "jungle.accessToken";
 const PKCE_VERIFIER_KEY = "jungle.pkceVerifier";
 const KEYCLOAK_READINESS_TIMEOUT_MS = 3500;
@@ -29,7 +28,6 @@ export function setAccessToken(token: string): void {
 
 export function clearAccessToken(): void {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
-  localStorage.removeItem(PLAYER_ID_KEY);
 }
 
 export function notifyAuthRequired(reason: string): void {

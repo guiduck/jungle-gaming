@@ -1,5 +1,12 @@
 _format_version: "3.0"
 
+plugins:
+  - name: rate-limiting
+    config:
+      minute: 120
+      policy: local
+      limit_by: ip
+
 services:
   - name: games-service
     url: http://games:4001

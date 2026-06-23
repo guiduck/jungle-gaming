@@ -30,14 +30,15 @@ async function main() {
     const context = await browser.newContext();
     page = await context.newPage();
 
-    await step("frontend unauthenticated shell", async () => {
+    await step("frontend public welcome", async () => {
       await page.goto(frontendUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
       const hasStoredToken = await page.evaluate(() => Boolean(window.localStorage.getItem("jungle.accessToken")));
       if (hasStoredToken) {
         throw new Error("clean browser context unexpectedly contains jungle.accessToken");
       }
 
-      await page.locator('[data-smoke="login-required-modal"]').waitFor({ timeout: 15000 });
+      await page.locator('[data-smoke="public-welcome"]').waitFor({ timeout: 15000 });
+      await page.locator('[data-smoke="welcome-modal"]').waitFor({ timeout: 15000 });
       await page.locator('[data-smoke="keycloak-login-button"]').waitFor({ timeout: 15000 });
     }, page);
 

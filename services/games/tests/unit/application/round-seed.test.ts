@@ -13,11 +13,17 @@ describe("round seed selection", () => {
     process.env = { ...ORIGINAL_ENV };
   });
 
-  test("uses normal round-derived seeds unless demo determinism is enabled", () => {
+  test("uses secret random server seeds unless demo determinism is enabled", () => {
     delete process.env.DEMO_DETERMINISTIC_ROUNDS;
 
+    const firstSeed = serverSeedForRound("round-1");
+    const secondSeed = serverSeedForRound("round-1");
+
     expect(isDemoDeterministicRoundsEnabled()).toBe(false);
-    expect(serverSeedForRound("round-1")).toBe("server-seed-round-1");
+    expect(firstSeed).toHaveLength(64);
+    expect(secondSeed).toHaveLength(64);
+    expect(firstSeed).not.toBe(secondSeed);
+    expect(firstSeed).not.toBe("server-seed-round-1");
     expect(nonceForRound("round-1")).toBe("round-1");
   });
 

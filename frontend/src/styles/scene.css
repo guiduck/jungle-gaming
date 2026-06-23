@@ -1,0 +1,285 @@
+.game-scene {
+  min-height: 560px;
+  overflow: hidden;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(70, 241, 156, 0.08), rgba(120, 87, 255, 0.12)),
+    #10131c;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  position: relative;
+}
+
+.scene-header {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px;
+}
+
+.scene-header span {
+  color: #a8b0c4;
+  font-weight: 800;
+}
+
+.scene-header strong {
+  color: #46f19c;
+  font-size: clamp(2rem, 8vw, 6rem);
+  line-height: 0.85;
+}
+
+.scene-feedback {
+  position: absolute;
+  z-index: 4;
+  top: 76px;
+  left: 18px;
+  max-width: min(320px, calc(100% - 36px));
+  padding: 8px 10px;
+  border-left: 3px solid #46f19c;
+  color: #f6f7fb;
+  background: linear-gradient(90deg, rgba(70, 241, 156, 0.18), rgba(70, 241, 156, 0));
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.scene-feedback.crashed {
+  border-left-color: #ff5b6e;
+  background: linear-gradient(90deg, rgba(255, 91, 110, 0.24), rgba(255, 91, 110, 0));
+}
+
+.mountain {
+  position: absolute;
+  inset: 104px 36px 32px;
+  overflow: hidden;
+}
+
+.mountain-world {
+  position: absolute;
+  inset: 0;
+  transform: translateX(var(--mountain-pan-x)) scale(calc(var(--mountain-zoom) * var(--mountain-zoom-boost, 1)));
+  transform-origin: var(--mountain-origin-x) var(--mountain-origin-y);
+  transition: transform 90ms linear;
+}
+
+.mountain-curve {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.mountain-fill,
+.mountain-trail {
+  vector-effect: non-scaling-stroke;
+}
+
+.mountain-fill {
+  fill: url("#revealedMountain");
+  filter: drop-shadow(0 18px 24px rgba(0, 0, 0, 0.28));
+}
+
+.mountain-trail {
+  fill: none;
+  stroke: #46f19c;
+  stroke-width: 4.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 10px rgba(70, 241, 156, 0.42));
+}
+
+.goat-svg {
+  pointer-events: none;
+}
+
+.goat-svg.crashed {
+  animation: goat-svg-crash-pop 700ms ease both;
+}
+
+.goat-svg-frame {
+  overflow: visible;
+}
+
+.goat-svg-sprite {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background-repeat: no-repeat;
+  background-size: auto 100%;
+  background-position: 0 0;
+  image-rendering: auto;
+  filter: drop-shadow(0 0.7px 0.9px rgba(0, 0, 0, 0.42));
+}
+
+.goat-svg-sprite.idle {
+  background-image: url("/assets/goat/idle.png");
+  animation: goat-svg-sheet 1200ms steps(14) infinite;
+}
+
+.goat-svg-sprite.run {
+  background-image: url("/assets/goat/run.png");
+  animation: goat-svg-sheet 650ms steps(10) infinite;
+}
+
+.goat-svg-sprite.jump {
+  background-image: url("/assets/goat/jump.png");
+  animation: goat-svg-sheet 700ms steps(7) infinite;
+}
+
+.goat {
+  position: absolute;
+  z-index: 2;
+  left: var(--goat-x);
+  bottom: var(--goat-y);
+  width: 36px;
+  height: 36px;
+  transform: translate(-92%, 0) rotate(var(--goat-angle));
+  transform-origin: 92% 100%;
+  transition:
+    left 90ms linear,
+    bottom 90ms linear,
+    transform 120ms linear;
+}
+
+.goat.crashed {
+  animation: goat-crash-pop 700ms ease both;
+}
+
+.goat-sprite {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 36px;
+  height: 36px;
+  display: block;
+  background-repeat: no-repeat;
+  background-size: auto 36px;
+  image-rendering: auto;
+  filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.35));
+}
+
+.scene-debug {
+  position: absolute;
+  left: clamp(12px, calc(var(--debug-x) - 168px), calc(100% - 168px));
+  top: clamp(12px, calc(var(--debug-y) + 14px), calc(100% - 112px));
+  z-index: 5;
+  display: grid;
+  gap: 3px;
+  width: 156px;
+  padding: 8px 10px;
+  border: 1px solid rgba(70, 241, 156, 0.42);
+  border-radius: 6px;
+  background: rgba(6, 8, 13, 0.82);
+  color: #d7ffe9;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  pointer-events: none;
+}
+
+.mountain-debug-points {
+  pointer-events: none;
+}
+
+.mountain-debug-points line {
+  stroke: rgba(255, 255, 255, 0.72);
+  stroke-width: 0.28;
+  stroke-dasharray: 1.2 1;
+}
+
+.mountain-debug-points circle {
+  stroke: #061017;
+  stroke-width: 0.28;
+}
+
+.mountain-debug-points .goat-anchor {
+  fill: #ffdf5b;
+}
+
+.mountain-debug-points .line-anchor {
+  fill: #ff5b6e;
+}
+
+.goat-sprite.idle {
+  background-image: url("/assets/goat/idle.png");
+  animation: goat-idle 1200ms steps(15) infinite;
+}
+
+.goat-sprite.run {
+  background-image: url("/assets/goat/run.png");
+  animation: goat-run 650ms steps(11) infinite;
+}
+
+.goat-sprite.jump {
+  background-image: url("/assets/goat/jump.png");
+  animation: goat-jump 700ms steps(8) infinite;
+}
+
+@keyframes goat-idle {
+  from {
+    background-position: 0 0;
+  }
+
+  to {
+    background-position: -540px 0;
+  }
+}
+
+@keyframes goat-run {
+  from {
+    background-position: 0 0;
+  }
+
+  to {
+    background-position: -396px 0;
+  }
+}
+
+@keyframes goat-jump {
+  from {
+    background-position: 0 0;
+  }
+
+  to {
+    background-position: -288px 0;
+  }
+}
+
+@keyframes goat-crash-pop {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+
+  45% {
+    translate: 0 -10px;
+  }
+}
+
+@keyframes goat-svg-sheet {
+  from {
+    background-position: 0 0;
+  }
+
+  to {
+    background-position: 100% 0;
+  }
+}
+
+@keyframes goat-svg-crash-pop {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+
+  45% {
+    translate: 0 -2px;
+  }
+}
+

@@ -1,0 +1,276 @@
+:root {
+  color: #f6f7fb;
+  background: #08090d;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  min-height: 42px;
+  border: 0;
+  border-radius: 6px;
+  color: #07110d;
+  background: #46f19c;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.secondary-button {
+  color: #f6f7fb;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+main {
+  min-height: 100vh;
+  padding: 24px;
+  background:
+    radial-gradient(circle at top left, rgba(70, 241, 156, 0.14), transparent 36%),
+    linear-gradient(180deg, #11131b 0%, #08090d 100%);
+}
+
+.topbar,
+.layout {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.topbar p,
+.topbar h1 {
+  margin: 0;
+}
+
+.topbar p {
+  color: #46f19c;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.topbar h1 {
+  font-size: clamp(2rem, 6vw, 4.5rem);
+  line-height: 0.95;
+}
+
+.wallet,
+.panel {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(15, 18, 27, 0.86);
+}
+
+.top-actions {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.command-top-button {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  min-width: 136px;
+  padding: 0 14px;
+  line-height: 1.2;
+  text-align: center;
+  white-space: normal;
+}
+
+.command-shortcut-hint {
+  font-size: 0.82rem;
+  color: #c8d0e4;
+}
+
+.wallet {
+  display: grid;
+  gap: 4px;
+  min-width: 190px;
+  padding: 14px 16px;
+  text-align: right;
+}
+
+.wallet span {
+  color: #a8b0c4;
+}
+
+.wallet strong {
+  font-size: 1.4rem;
+}
+
+.wallet-balance-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.eye-button {
+  display: inline-grid;
+  place-items: center;
+  min-width: 32px;
+  min-height: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #f6f7fb;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.eye-button:hover {
+  border-color: rgba(70, 241, 156, 0.42);
+  color: #46f19c;
+}
+
+.eye-glyph {
+  position: relative;
+  width: 18px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-radius: 50% / 60%;
+}
+
+.eye-glyph::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  transform: translate(-50%, -50%);
+}
+
+.eye-glyph.hidden::after {
+  content: "";
+  position: absolute;
+  left: -3px;
+  top: 4px;
+  width: 24px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  transform: rotate(-35deg);
+}
+
+.wallet small {
+  color: #46f19c;
+  font-weight: 700;
+}
+
+.auth-screen {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  justify-items: center;
+  gap: 18px;
+  padding-top: clamp(32px, 7vh, 72px);
+}
+
+.auth-hero {
+  position: relative;
+  z-index: 2;
+  width: min(720px, 100%);
+  display: grid;
+  gap: 10px;
+  text-align: center;
+}
+
+.auth-hero p {
+  margin: 0;
+  color: #46f19c;
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.auth-hero h1 {
+  margin: 0;
+  font-size: clamp(2.8rem, 9vw, 5.6rem);
+  line-height: 0.9;
+}
+
+.auth-hero span,
+.auth-panel span,
+.auth-panel small {
+  color: #a8b0c4;
+  line-height: 1.5;
+}
+
+.auth-panel {
+  position: relative;
+  z-index: 2;
+  width: min(420px, 100%);
+  display: grid;
+  gap: 14px;
+  animation: modalSlideIn 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.auth-panel h1,
+.auth-panel h2,
+.auth-panel p {
+  margin: 0;
+}
+
+.auth-panel p {
+  color: #46f19c;
+  font-weight: 800;
+}
+
+.auth-panel h2 {
+  font-size: 1.8rem;
+}
+
+.auth-countdown {
+  min-height: 28px;
+  color: #46f19c;
+  font-size: 1rem;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(300px, 0.8fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.primary-column,
+.right-rail,
+.insights-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.primary-column {
+  min-width: 0;
+}
+

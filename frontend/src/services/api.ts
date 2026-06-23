@@ -155,15 +155,3 @@ export async function cashOut(multiplierBps: number): Promise<Round> {
 export async function markBetReady(): Promise<Round> {
   return request<Round>("/games/bet/ready", { method: "POST", body: "{}" });
 }
-
-export async function startRound(): Promise<Round> {
-  return request<Round>("/games/rounds/current/start", { method: "POST", body: "{}" });
-}
-
-export async function crashRound(): Promise<Round> {
-  return request<Round>("/games/rounds/current/crash", { method: "POST", body: "{}" });
-}
-
-export async function settleRound(): Promise<Round> {
-  return request<Round>("/games/rounds/current/settle", { method: "POST", body: "{}" });
-}

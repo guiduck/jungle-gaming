@@ -1,0 +1,28 @@
+import { betOutcomeLabel } from "../../services/read-model-display";
+import type { ItemsResponse, PlayerBetHistoryEntry } from "../../types";
+import { cents, multiplier } from "./panel-formatters";
+
+export function MyBetsPanel({ myBets }: { myBets?: ItemsResponse<PlayerBetHistoryEntry> }) {
+  return (
+    <section className="panel bets my-bets-panel" data-smoke="my-bets-panel">
+      <h2>Minhas apostas</h2>
+      {myBets?.items.length ? (
+        <ul>
+          {myBets.items.map((item) => (
+            <li key={`${item.roundId}:${item.betId}`}>
+              <span>{item.roundId}</span>
+              <strong>{cents(item.amountCents)}</strong>
+              <em>{betOutcomeLabel(item)}</em>
+              <small>
+                {multiplier(item.crashMultiplierBps)}
+                {item.payoutCents ? ` / ${cents(item.payoutCents)}` : ""}
+              </small>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p>Nenhuma aposta do jogador ainda.</p>
+      )}
+    </section>
+  );
+}
