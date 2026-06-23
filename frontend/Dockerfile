@@ -6,6 +6,7 @@ COPY package.json ./
 RUN bun install
 
 COPY . .
+RUN bun run build-storybook
 
 EXPOSE 3000
 

@@ -173,6 +173,8 @@ Extras pedidos no desafio e entregues neste projeto:
 - **Playwright**: `npm run smoke:browser` valida welcome publico, Keycloak PKCE e shell autenticada.
 - **Rate limiting**: Kong aplica limite por IP no gateway.
 - **Deploy opcional VPS**: workflow manual/pos-CI para `jungle.gfig.space`.
+- **Storybook oficial implementado**: React/Vite Storybook com stories reais, acessivel na rota
+  `/storybook`.
 - **Polish de UX**: Nina, montanha procedural, atalhos, modal de comandos e layout responsivo.
 
 Extras explicitamente deixados para depois:
@@ -180,7 +182,6 @@ Extras explicitamente deixados para depois:
 - Outbox/inbox transacional.
 - OpenTelemetry + Prometheus + Grafana.
 - Efeitos sonoros.
-- Storybook.
 
 ## Trechos de Implementacao
 
@@ -229,6 +230,32 @@ return {
 
 Rate limiting e smoke browser ficam versionados na infra/CI:
 
+```ts
+// frontend/src/components/game-panels/GamePanels.stories.tsx
+export const BettingOpen: Story = {
+  render: () => (
+    <BettingControls
+      amountCents={500}
+      autoBetEnabled={true}
+      autoBetStrategy="martingale"
+      autoCashoutEnabled={true}
+      autoCashoutTarget="1.80"
+      round={bettingRound}
+      onBetSubmit={noopSubmit}
+      onCashout={noop}
+      onReady={noop}
+    />
+  ),
+};
+```
+
+O Docker build tambem gera o artefato estatico do Storybook:
+
+```dockerfile
+# frontend/Dockerfile
+RUN bun run build-storybook
+```
+
 ```yaml
 # docker/kong/kong.yml
 plugins:
@@ -259,6 +286,7 @@ npx tsc -p services/wallets/tsconfig.json --noEmit
 npx tsc -p frontend/tsconfig.json --noEmit
 npm --workspace frontend run test
 npm --workspace frontend run build
+npm --workspace frontend run build-storybook
 npm --workspace @crash/games run test
 npm --workspace @crash/games run test:e2e
 npm --workspace @crash/wallets run test
@@ -277,6 +305,7 @@ npx playwright install chromium
 ## Links Locais
 
 - Jogo: `http://localhost:3000`
+- Storybook implementado: `http://localhost:3000/storybook`
 - Kong: `http://localhost:8000`
 - Swagger Games: `http://localhost:4001/docs`
 - Swagger Wallets: `http://localhost:4002/docs`
@@ -307,6 +336,12 @@ O projeto tem dois workflows principais:
 - `Deploy VPS`: atualiza a VPS por SSH, reconstrui a stack Docker Compose e verifica
   `https://jungle.gfig.space/`.
 
+Depois do deploy, o Storybook implementado fica acessivel no mesmo frontend:
+
+```text
+https://jungle.gfig.space/storybook
+```
+
 Para o deploy VPS, configure:
 
 - secret `VPS_SSH_PRIVATE_KEY`
@@ -335,5 +370,4 @@ Ficou para evolucao futura:
 - observabilidade profunda;
 - suite Playwright mais ampla;
 - efeitos sonoros;
-- Storybook;
 - hardening operacional completo da VPS.

@@ -224,6 +224,10 @@ Status:
   top-level project name, adds badges and a linked table of contents, keeps setup/run instructions
   concise, documents delivered challenge extras, and includes short implementation snippets without
   becoming a long-form architecture document.
+- The Storybook extra is complete with the official React/Vite Storybook package: stories cover the
+  game scene, command modal, betting/wallet states, and read-model panels, and the frontend Docker
+  build publishes the static Storybook artifact at `/storybook` so the deployed environment can
+  expose `https://jungle.gfig.space/storybook`.
 
 Candidates:
 

@@ -75,6 +75,11 @@
   a linked table of contents, condensed setup/run instructions, documented challenge extras
   delivered, and included short implementation snippets for auto-cashout, Auto Bet/Martingale,
   Kong rate limiting, and CI smoke without expanding the README into a full design document.
+  A final frontend extra now installs real Storybook for React/Vite, adds typed stories for the
+  game scene, command modal, wallet, betting controls, and read-model panels, and builds the static
+  Storybook artifact into `/storybook` during the frontend Docker image build. The route is intended
+  to be reachable after deploy as `https://jungle.gfig.space/storybook` and does not change the game
+  auth flow.
 
 ## Recent Decisions
 
@@ -282,6 +287,28 @@
 - README-only validation after the documentation polish checked the new table of contents headings
   and confirmed the snippet source files exist: `services/games/src/domain/entities/round.ts`,
   `frontend/src/services/auto-bet.ts`, `docker/kong/kong.yml`, and `.github/workflows/ci.yml`.
+- Ran `npx.cmd tsc -p frontend/tsconfig.json --noEmit` successfully after replacing the temporary
+  component gallery with official React/Vite Storybook.
+- Ran `npm.cmd --workspace frontend run test` successfully after the Storybook correction: 9 files,
+  41 tests passed.
+- Ran `npm.cmd --workspace frontend run build` successfully after the Storybook correction.
+- Ran `npm.cmd --workspace frontend run build-storybook` successfully; Storybook v10.4.6 generated
+  `frontend/public/storybook` with `CommandModal`, `GameScene`, and `GamePanels` stories.
+- Rebuilt the frontend image with `docker compose build frontend`; the Dockerfile `RUN bun run
+  build-storybook` step completed successfully inside the image.
+- `docker compose up -d frontend` hit a local Docker Desktop mount-source error while trying to
+  start dependency containers (`/run/desktop/mnt/host/c ... file exists`). Starting only the
+  frontend with `docker compose up -d --no-deps frontend` succeeded for Storybook verification.
+- Verified `http://localhost:3000/storybook` redirects to `/storybook/` and serves the official
+  Storybook HTML without Keycloak.
+- Captured `http://localhost:3000/storybook` with Playwright to `output/playwright/storybook.png`;
+  the Storybook shell and sidebar rendered.
+- Captured a real rendered story at
+  `http://localhost:3000/storybook/iframe.html?id=goat-run-game-panels--betting-open` to
+  `output/playwright/storybook-game-panels.png`; the betting controls story rendered.
+- Full `npm.cmd run smoke:browser` was not rerun after the Storybook correction because the local
+  stack dependencies were not running after the Docker Desktop mount-source error. The route-level
+  Storybook verification passed from the rebuilt frontend container.
 - Read the official challenge README from the cloned scaffold.
 - Inspected root `package.json`, `docker-compose.yml`, and both service package manifests.
 - Confirmed scaffold contains `services/games`, `services/wallets`, `docker`, `frontend`, and
@@ -957,6 +984,10 @@
   maintainability-only and the live browser smoke passed after rebuilding the frontend container.
 - No remaining blocking work for README polish; it is documentation-only and did not require app
   rebuild or service smoke reruns.
+- No remaining blocking work for the official Storybook extra. It is built with
+  `npm --workspace frontend run build-storybook`, served locally at `/storybook` from the frontend
+  static assets, and final public verification should happen after the VPS deploy updates
+  `jungle.gfig.space`.
 - The final maintainability closeout has focused typecheck/test/build coverage. The later public
   welcome auth correction and post-submission hardening fixes now have full Docker/API/browser
   validation evidence.

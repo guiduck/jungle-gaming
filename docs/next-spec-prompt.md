@@ -20,6 +20,9 @@ The project now includes the challenge extras requested after the initial delive
 - The root `README.md` now has badges, a linked table of contents, concise run instructions, a
   delivered-extras section, and short implementation snippets. Future README edits should preserve
   that compact evaluator-friendly shape.
+- The frontend now installs official React/Vite Storybook, builds its static artifact during the
+  frontend Docker image build, and exposes it at `/storybook`; after VPS deployment it should be
+  reachable at `https://jungle.gfig.space/storybook`.
 
 The user has a VPS at `root@216.158.236.156` and domain `jungle.gfig.space`, and wants to test the
 automated deploy flow there.
@@ -54,6 +57,8 @@ automated deploy flow there.
 - Record whether the deploy was triggered manually or by successful `CI` on `main`.
 - Verify the deployed public URL, Kong routes, Keycloak login readiness, and at least one smoke path
   that does not leak tokens, passwords, authorization codes, PKCE verifiers, or secrets.
+- Verify the deployed `/storybook` route renders the official Storybook UI without requiring
+  Keycloak login.
 - If the VPS environment differs from local Docker Compose, document the smallest required
   environment-specific setting instead of broadening product scope.
 - Preserve the local Docker Compose challenge runbook as the primary evaluator path.
