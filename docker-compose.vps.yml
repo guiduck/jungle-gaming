@@ -1,0 +1,38 @@
+services:
+  postgres:
+    ports: !override []
+
+  rabbitmq:
+    ports: !override []
+
+  games:
+    ports: !override []
+    environment:
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
+
+  wallets:
+    ports: !override []
+    environment:
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
+
+  kong:
+    ports: !override
+      - "127.0.0.1:8100:8000"
+
+  keycloak:
+    ports: !override
+      - "127.0.0.1:8180:8080"
+    environment:
+      KC_PROXY_HEADERS: xforwarded
+      KC_HOSTNAME: https://${PUBLIC_HOST}
+      KC_HOSTNAME_STRICT: "false"
+
+  frontend:
+    ports: !override
+      - "127.0.0.1:3100:3000"
+    environment:
+      VITE_API_URL: https://${PUBLIC_HOST}
+      VITE_AUTH_MODE: keycloak
+      VITE_KEYCLOAK_URL: https://${PUBLIC_HOST}
+      VITE_KEYCLOAK_REALM: crash-game
+      VITE_KEYCLOAK_CLIENT_ID: crash-game-client

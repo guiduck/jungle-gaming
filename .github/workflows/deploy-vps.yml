@@ -43,7 +43,7 @@ jobs:
 
       - name: Deploy Compose stack
         run: |
-          ssh -i ~/.ssh/jungle_vps "$VPS_USER@$VPS_HOST" "cd '$VPS_PATH' && git fetch --all --prune && git checkout master && git pull --ff-only && npm install --no-audit --no-fund && docker compose build games wallets games-migrations wallets-migrations frontend && docker compose up -d --remove-orphans"
+          ssh -i ~/.ssh/jungle_vps "$VPS_USER@$VPS_HOST" "cd '$VPS_PATH' && git fetch --all --prune && git checkout master && git pull --ff-only && docker compose -f docker-compose.yml -f docker-compose.vps.yml build games wallets games-migrations wallets-migrations frontend && docker compose -f docker-compose.yml -f docker-compose.vps.yml up -d --remove-orphans"
 
       - name: Verify public URL
         run: |

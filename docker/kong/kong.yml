@@ -3,7 +3,7 @@ _format_version: "3.0"
 plugins:
   - name: rate-limiting
     config:
-      minute: 120
+      minute: 135
       policy: local
       limit_by: ip
 
