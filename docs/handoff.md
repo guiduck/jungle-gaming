@@ -80,6 +80,13 @@
   Storybook artifact into `/storybook` during the frontend Docker image build. The route is intended
   to be reachable after deploy as `https://jungle.gfig.space/storybook` and does not change the game
   auth flow.
+  A June 24 frontend organization follow-up moved large UI entries into component folders with
+  `index.tsx`, extracted `App` and authenticated-game state/effects into hooks, moved game
+  dialogues and keyboard commands into `constants`, moved shared display helpers into
+  `utils/formatters`, split GameScene debug rendering into a focused component, and replaced JSX
+  `condition ? <Component /> : null` patterns with `condition && <Component />` or paired boolean
+  branches. This is maintainability-only and preserves auth, gameplay, wallet settlement,
+  WebSocket/RabbitMQ contracts, smoke selectors, and player-facing behavior.
 
 ## Recent Decisions
 
@@ -927,6 +934,17 @@
     3 files, 9 tests; `npm.cmd --workspace frontend run test` passed: 9 files, 41 tests;
     `npm.cmd --workspace frontend run build` passed; `docker compose config --quiet` passed.
     Full Docker smoke and live VPS deploy were not run in this turn.
+- Frontend component organization follow-up on June 24, 2026:
+  - `App.tsx` now delegates login/callback/countdown state to `frontend/src/hooks/use-app.ts`.
+  - `AuthenticatedGame`, `GameScene`, `PublicWelcome`, and `CommandModal` now live in component
+    folders with `index.tsx`; `AuthenticatedGame` has a local `use-authenticated-game` hook and
+    `GameScene` has a focused debug component.
+  - Keyboard command data and dialogue scripts moved to `frontend/src/constants/`; shared display
+    helpers moved to `frontend/src/utils/formatters.ts`.
+  - JSX render fallbacks were changed from ternary-to-null patterns to `&&`; two-branch UI states
+    now use explicit boolean branches.
+  - Validation: `npm.cmd --workspace frontend run build` passed; `npm.cmd --workspace frontend run
+    test` passed: 9 files, 42 tests.
 
 ## Product Direction To Preserve
 
@@ -988,6 +1006,8 @@
   `npm --workspace frontend run build-storybook`, served locally at `/storybook` from the frontend
   static assets, and final public verification should happen after the VPS deploy updates
   `jungle.gfig.space`.
+- No remaining blocking work for the June 24 frontend organization follow-up. Full-stack Docker
+  smoke was not rerun because the change is frontend-structure-only and frontend build/test passed.
 - The final maintainability closeout has focused typecheck/test/build coverage. The later public
   welcome auth correction and post-submission hardening fixes now have full Docker/API/browser
   validation evidence.

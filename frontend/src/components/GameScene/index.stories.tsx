@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
-import { useGameStore } from "../stores/game-store";
-import { GameScene } from "./GameScene";
 import React from "react";
+import { useGameStore } from "../../stores/game-store";
+import { GameScene } from ".";
 
 function SceneState({
   phase,

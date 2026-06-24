@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
-import { welcomeDialogues } from "../game-dialogues";
-import { useDialogueStore } from "../stores/dialogue-store";
-import { DialogueSystem } from "./DialogueSystem";
+import { welcomeDialogues } from "../../constants/game-dialogues";
+import { useDialogueStore } from "../../stores/dialogue-store";
+import { DialogueSystem } from "../DialogueSystem";
 
 export interface PublicWelcomeProps {
   isLoginRequired: boolean;
@@ -37,7 +37,7 @@ export function PublicWelcome({
         <span>Ajude a cabra Nina a subir a montanha sem perder o momento certo do saque.</span>
       </section>
 
-      {isLoginRequired ? (
+      {isLoginRequired && (
         <section
           className="panel auth-panel"
           role="dialog"
@@ -57,7 +57,9 @@ export function PublicWelcome({
           </button>
           <small>Usuario local do desafio: player / player123</small>
         </section>
-      ) : (
+      )}
+
+      {!isLoginRequired && (
         <section
           className="welcome-modal"
           role="dialog"

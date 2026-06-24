@@ -1,7 +1,7 @@
 import type { FormEvent } from "react";
 import type { AutoBetStrategy } from "../../services/auto-bet";
 import type { Bet, Round } from "../../types";
-import { cashoutStateLabel, cents, errorMessage, multiplier } from "./panel-formatters";
+import { cashoutStateLabel, cents, errorMessage, multiplier } from "../../utils/formatters";
 
 export interface BettingControlsProps {
   amountCents: number;
@@ -98,7 +98,7 @@ export function BettingControls({
           />
           Saque automatico
         </label>
-        {autoCashoutEnabled ? (
+        {autoCashoutEnabled && (
           <label>
             Alvo
             <input
@@ -111,7 +111,7 @@ export function BettingControls({
               onChange={(event) => onAutoCashoutTargetChange(event.target.value)}
             />
           </label>
-        ) : null}
+        )}
         <button disabled={betDisabled}>
           {placeBetPending ? "Confirmando..." : hasAcceptedBet ? "Aposta ativa" : "Apostar"}
         </button>
@@ -125,7 +125,7 @@ export function BettingControls({
           />
           Auto bet
         </label>
-        {autoBetEnabled ? (
+        {autoBetEnabled && (
           <div className="auto-bet-grid">
             <label>
               Estrategia
@@ -155,29 +155,29 @@ export function BettingControls({
               {cents(autoBetAccumulatedLossCents)}
             </p>
           </div>
-        ) : null}
+        )}
       </div>
-      {myBetNeedsReady ? (
+      {myBetNeedsReady && (
         <button className="ready-button" disabled={readyPending} onClick={onReady}>
           {readyPending ? "Marcando..." : "Pronto para comecar"}
         </button>
-      ) : null}
-      {round?.status === "betting" && myBet?.ready ? (
+      )}
+      {round?.status === "betting" && myBet?.ready && (
         <p className="status accepted">Pronto confirmado. Aguardando outros apostadores.</p>
-      ) : null}
-      {readyError ? (
+      )}
+      {Boolean(readyError) && (
         <p className="status rejected">
           {errorMessage(readyError, "Nao foi possivel marcar pronto.")}
         </p>
-      ) : null}
-      {placeBetError ? (
+      )}
+      {Boolean(placeBetError) && (
         <p className="status rejected">
           {errorMessage(placeBetError, "Nao foi possivel colocar a aposta.")}
         </p>
-      ) : null}
-      {myBet?.autoCashoutMultiplierBps && myBet.status === "pending" ? (
+      )}
+      {myBet?.autoCashoutMultiplierBps && myBet.status === "pending" && (
         <p className="status">Alvo automatico: {multiplier(myBet.autoCashoutMultiplierBps)}</p>
-      ) : null}
+      )}
       <button className="cashout" disabled={cashoutDisabled} onClick={onCashout}>
         Sacar {payoutLabel}
       </button>

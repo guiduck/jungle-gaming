@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { CommandModal } from "./CommandModal";
+import { CommandModal } from ".";
 
 const meta = {
   title: "Goat Run/Command Modal",

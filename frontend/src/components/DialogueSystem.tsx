@@ -107,7 +107,7 @@ export function DialogueSystem() {
         </div>
         <p className="dialogue-text">
           {displayedText}
-          {isTyping ? <span className="dialogue-cursor" aria-hidden="true" /> : null}
+          {isTyping && <span className="dialogue-cursor" aria-hidden="true" />}
         </p>
         <button
           className="dialogue-next"

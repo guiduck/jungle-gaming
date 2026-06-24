@@ -1,6 +1,6 @@
-import { formatMultiplierBps } from "../../services/auto-cashout";
-import { formatCents } from "../../services/read-model-display";
-import type { RoundStatus } from "../../types";
+import { formatMultiplierBps } from "../services/auto-cashout";
+import { formatCents } from "../services/read-model-display";
+import type { RoundStatus } from "../types";
 
 export function cents(value: number): string {
   return formatCents(value);
@@ -8,6 +8,10 @@ export function cents(value: number): string {
 
 export function multiplier(value: number): string {
   return formatMultiplierBps(value);
+}
+
+export function debugNumber(value: number): string {
+  return value.toFixed(2);
 }
 
 export function revealedCrashPointLabel(
@@ -37,6 +41,36 @@ export function phaseLabel(status: string | undefined): string {
       return "encerrada";
     default:
       return "carregando";
+  }
+}
+
+export function scenePhaseLabel(status: string | undefined): string {
+  switch (status) {
+    case "betting":
+      return "Apostas";
+    case "running":
+      return "Subindo";
+    case "crashed":
+      return "Crash";
+    case "settled":
+      return "Encerrada";
+    default:
+      return "Carregando";
+  }
+}
+
+export function scenePhaseMessage(status: string | undefined): string {
+  switch (status) {
+    case "betting":
+      return "Trilha aberta";
+    case "running":
+      return "Cabra na subida";
+    case "crashed":
+      return "Crash na crista!";
+    case "settled":
+      return "Subida encerrada";
+    default:
+      return "Procurando a trilha";
   }
 }
 

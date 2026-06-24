@@ -1,5 +1,5 @@
 import type { Round } from "../../types";
-import { phaseLabel, revealedCrashPointLabel } from "./panel-formatters";
+import { phaseLabel, revealedCrashPointLabel } from "../../utils/formatters";
 
 export interface RoundSummaryProps {
   isLoading: boolean;
@@ -10,7 +10,7 @@ export function RoundSummary({ isLoading, round }: RoundSummaryProps) {
   return (
     <section className="panel round-summary" data-smoke="round-phase">
       <h2>Rodada</h2>
-      {isLoading ? <p>Carregando rodada...</p> : null}
+      {isLoading && <p>Carregando rodada...</p>}
       <dl>
         <dt>Rodada</dt>
         <dd>{round?.id}</dd>

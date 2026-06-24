@@ -228,6 +228,13 @@ Status:
   game scene, command modal, betting/wallet states, and read-model panels, and the frontend Docker
   build publishes the static Storybook artifact at `/storybook` so the deployed environment can
   expose `https://jungle.gfig.space/storybook`.
+- A June 24 frontend organization follow-up is complete: large UI entries now use component folders
+  with `index.tsx`, `App` and the authenticated game shell delegate state/effects to hooks,
+  keyboard commands/dialogues live under `frontend/src/constants/`, shared display helpers live
+  under `frontend/src/utils/formatters.ts`, GameScene debug rendering is isolated, and JSX
+  null-fallback render ternaries were replaced with boolean branches. This is maintainability-only
+  and does not change gameplay, auth, wallet settlement, public contracts, smoke selectors, or
+  deployed routes.
 
 Candidates:
 
@@ -318,5 +325,7 @@ Gate:
 - Active round UI does not disclose the crash point before the round is terminal.
 - Final internal quality changes are limited to componentization and readable service flow, with no
   new feature scope.
+- Frontend organization changes should remain structural only unless a later evaluator bug requires
+  behavior changes; the current follow-up is covered by frontend build and tests.
 - No additional Spec Kit feature work is required unless evaluator feedback reveals a blocking
   issue or the project intentionally resumes optional production hardening.

@@ -17,6 +17,10 @@ The project now includes the challenge extras requested after the initial delive
   panels live under `frontend/src/components/game-panels/`, game queries/mutations/socket/
   multiplier animation/dialogue/shortcuts are split into focused hooks, and `styles.css` imports
   area-specific CSS files from `frontend/src/styles/`.
+- A later frontend organization follow-up moved large component entries to folders with
+  `index.tsx`, extracted `use-app` and `use-authenticated-game`, moved dialogue/command data into
+  `frontend/src/constants/`, moved shared display helpers into `frontend/src/utils/formatters.ts`,
+  and standardized JSX null-fallback rendering on boolean branches.
 - The root `README.md` now has badges, a linked table of contents, concise run instructions, a
   delivered-extras section, and short implementation snippets. Future README edits should preserve
   that compact evaluator-friendly shape.
@@ -64,6 +68,8 @@ automated deploy flow there.
 - Preserve the local Docker Compose challenge runbook as the primary evaluator path.
 - Preserve the current frontend organization boundaries unless a concrete deploy-verification bug
   requires touching them.
+- Do not reintroduce large mixed logic/JSX frontend files or component-local formatters/constants
+  when deploy verification only needs operational fixes.
 - Preserve the README table of contents and concise extras/snippets section when documenting new
   validation or deployment evidence.
 

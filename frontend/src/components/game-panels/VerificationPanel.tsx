@@ -4,7 +4,7 @@ export function VerificationPanel({ verification }: { verification?: CompletedRo
   return (
     <section className="panel verify" data-smoke="verification-panel">
       <h2>Verificacao</h2>
-      {verification ? (
+      {verification && (
         <dl>
           <dt>Rodada</dt>
           <dd>{verification.id}</dd>
@@ -19,9 +19,8 @@ export function VerificationPanel({ verification }: { verification?: CompletedRo
             {verification.formula.commitmentAlgorithm} / {verification.formula.crashAlgorithm}
           </dd>
         </dl>
-      ) : (
-        <p>Complete uma rodada para revelar os dados de verificacao.</p>
       )}
+      {!verification && <p>Complete uma rodada para revelar os dados de verificacao.</p>}
     </section>
   );
 }

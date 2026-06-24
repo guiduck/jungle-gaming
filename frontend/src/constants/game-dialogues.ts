@@ -1,4 +1,4 @@
-import type { DialogueLine } from "./stores/dialogue-store";
+import type { DialogueLine } from "../stores/dialogue-store";
 
 export type PlayerBetDialogueState = "none" | "pending" | "cashed_out" | "lost";
 

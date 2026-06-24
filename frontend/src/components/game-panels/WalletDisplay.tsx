@@ -1,5 +1,5 @@
 import type { Wallet } from "../../types";
-import { cents, socketStatusLabel } from "./panel-formatters";
+import { cents, socketStatusLabel } from "../../utils/formatters";
 
 export interface WalletDisplayProps {
   wallet?: Wallet;
@@ -8,13 +8,25 @@ export interface WalletDisplayProps {
   onToggleBalance: () => void;
 }
 
+function walletBalanceLabel(wallet: Wallet | undefined, showBalance: boolean): string {
+  if (!wallet) {
+    return "...";
+  }
+
+  if (!showBalance) {
+    return "******";
+  }
+
+  return cents(wallet.balanceCents);
+}
+
 export function WalletDisplay({
   wallet,
   showBalance,
   socketStatus,
   onToggleBalance,
 }: WalletDisplayProps) {
-  const balanceLabel = wallet ? (showBalance ? cents(wallet.balanceCents) : "******") : "...";
+  const balanceLabel = walletBalanceLabel(wallet, showBalance);
   const visibilityLabel = showBalance ? "Ocultar saldo" : "Mostrar saldo";
 
   return (

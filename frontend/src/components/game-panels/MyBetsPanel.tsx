@@ -1,14 +1,17 @@
 import { betOutcomeLabel } from "../../services/read-model-display";
 import type { ItemsResponse, PlayerBetHistoryEntry } from "../../types";
-import { cents, multiplier } from "./panel-formatters";
+import { cents, multiplier } from "../../utils/formatters";
 
 export function MyBetsPanel({ myBets }: { myBets?: ItemsResponse<PlayerBetHistoryEntry> }) {
+  const myBetItems = myBets?.items ?? [];
+  const hasMyBets = myBetItems.length > 0;
+
   return (
     <section className="panel bets my-bets-panel" data-smoke="my-bets-panel">
       <h2>Minhas apostas</h2>
-      {myBets?.items.length ? (
+      {hasMyBets && (
         <ul>
-          {myBets.items.map((item) => (
+          {myBetItems.map((item) => (
             <li key={`${item.roundId}:${item.betId}`}>
               <span>{item.roundId}</span>
               <strong>{cents(item.amountCents)}</strong>
@@ -20,9 +23,8 @@ export function MyBetsPanel({ myBets }: { myBets?: ItemsResponse<PlayerBetHistor
             </li>
           ))}
         </ul>
-      ) : (
-        <p>Nenhuma aposta do jogador ainda.</p>
       )}
+      {!hasMyBets && <p>Nenhuma aposta do jogador ainda.</p>}
     </section>
   );
 }

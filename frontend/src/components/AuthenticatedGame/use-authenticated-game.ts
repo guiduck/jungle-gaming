@@ -5,27 +5,14 @@ import {
   settleAutoBet,
   type AutoBetConfig,
   type AutoBetStrategy,
-} from "../services/auto-bet";
-import { parseMultiplierInputToBps } from "../services/auto-cashout";
-import { getCurrentPlayerId } from "../services/auth";
-import { useDialogueStore } from "../stores/dialogue-store";
-import { useGameStore } from "../stores/game-store";
-import {
-  BettingControls,
-  CurrentBetsPanel,
-  HistoryPanel,
-  LeaderboardPanel,
-  MyBetsPanel,
-  RoundSummary,
-  VerificationPanel,
-  WalletDisplay,
-} from "./game-panels";
-import { useGame } from "../hooks/use-game";
-import { useGameDialogue } from "../hooks/use-game-dialogue";
-import { useGameShortcuts } from "../hooks/use-game-shortcuts";
-import { CommandModal } from "./CommandModal";
-import { DialogueSystem } from "./DialogueSystem";
-import { GameScene } from "./GameScene";
+} from "../../services/auto-bet";
+import { parseMultiplierInputToBps } from "../../services/auto-cashout";
+import { getCurrentPlayerId } from "../../services/auth";
+import { useDialogueStore } from "../../stores/dialogue-store";
+import { useGameStore } from "../../stores/game-store";
+import { useGame } from "../../hooks/use-game";
+import { useGameDialogue } from "../../hooks/use-game-dialogue";
+import { useGameShortcuts } from "../../hooks/use-game-shortcuts";
 
 const BALANCE_VISIBLE_KEY = "jungle.walletBalanceVisible";
 
@@ -33,7 +20,7 @@ function readBalanceVisibility(): boolean {
   return localStorage.getItem(BALANCE_VISIBLE_KEY) !== "false";
 }
 
-export function AuthenticatedGame() {
+export function useAuthenticatedGame() {
   const [amountCents, setAmountCents] = useState(100);
   const [autoCashoutEnabled, setAutoCashoutEnabled] = useState(false);
   const [autoCashoutTarget, setAutoCashoutTarget] = useState("1.50");
@@ -208,80 +195,42 @@ export function AuthenticatedGame() {
     });
   };
 
-  return (
-    <main data-smoke="authenticated-shell">
-      <header className="topbar">
-        <div>
-          <p>Goat Run</p>
-          <h1>Goat Run</h1>
-        </div>
-        <div className="top-actions">
-          <button
-            className="secondary-button command-top-button"
-            data-smoke="show-commands"
-            onClick={() => setShowCommands(true)}
-          >
-            <span>Mostrar comandos</span>
-            <span className="command-shortcut-hint">(H)</span>
-          </button>
-          <WalletDisplay
-            wallet={walletQuery.data}
-            showBalance={showBalance}
-            socketStatus={socketStatus}
-            onToggleBalance={toggleBalanceVisibility}
-          />
-        </div>
-      </header>
-
-      <div className="layout">
-        <div className="primary-column">
-          <GameScene />
-
-          <div className="insights-grid" aria-label="Leituras da rodada">
-            <LeaderboardPanel leaderboard={leaderboardQuery.data} />
-            <MyBetsPanel myBets={myBetsQuery.data} />
-            <VerificationPanel verification={verificationQuery.data} />
-          </div>
-        </div>
-
-        <aside className="right-rail" aria-label="Controles do jogo e leituras da rodada">
-          <BettingControls
-            amountCents={amountCents}
-            autoBetAccumulatedLossCents={autoBetConfig.accumulatedLossCents}
-            autoBetCurrentAmountCents={autoBetConfig.currentAmountCents}
-            autoBetEnabled={autoBetConfig.enabled}
-            autoBetStopLossCents={autoBetConfig.stopLossCents}
-            autoBetStrategy={autoBetConfig.strategy}
-            autoCashoutEnabled={autoCashoutEnabled}
-            autoCashoutMultiplierBps={autoCashoutMultiplierBps}
-            autoCashoutTarget={autoCashoutTarget}
-            authoritativeMultiplierBps={authoritativeMultiplierBps}
-            cashoutState={cashoutState}
-            hasAcceptedBet={hasAcceptedBet}
-            myBet={myBet}
-            myBetNeedsReady={myBetNeedsReady}
-            placeBetError={placeBetMutation.isError ? placeBetMutation.error : undefined}
-            placeBetPending={placeBetMutation.isPending}
-            readyError={readyMutation.isError ? readyMutation.error : undefined}
-            readyPending={readyMutation.isPending}
-            round={round}
-            onAmountChange={setAmountCents}
-            onAutoBetEnabledChange={setAutoBetEnabled}
-            onAutoBetStopLossChange={setAutoBetStopLoss}
-            onAutoBetStrategyChange={setAutoBetStrategy}
-            onAutoCashoutEnabledChange={setAutoCashoutEnabled}
-            onAutoCashoutTargetChange={setAutoCashoutTarget}
-            onBetSubmit={onBet}
-            onCashout={cashoutCurrentBet}
-            onReady={() => readyMutation.mutate()}
-          />
-          <RoundSummary isLoading={roundQuery.isLoading} round={round} />
-          <CurrentBetsPanel round={round} />
-          <HistoryPanel history={historyQuery.data} />
-        </aside>
-      </div>
-      <DialogueSystem />
-      <CommandModal isOpen={showCommands} onClose={() => setShowCommands(false)} />
-    </main>
-  );
+  return {
+    amountCents,
+    autoBetConfig,
+    autoCashoutEnabled,
+    autoCashoutMultiplierBps,
+    autoCashoutTarget,
+    authoritativeMultiplierBps,
+    cashoutCurrentBet,
+    cashoutState,
+    hasAcceptedBet,
+    history: historyQuery.data,
+    isRoundLoading: roundQuery.isLoading,
+    leaderboard: leaderboardQuery.data,
+    myBet,
+    myBetNeedsReady,
+    myBets: myBetsQuery.data,
+    placeBetError: placeBetMutation.isError ? placeBetMutation.error : undefined,
+    placeBetPending: placeBetMutation.isPending,
+    readyError: readyMutation.isError ? readyMutation.error : undefined,
+    readyPending: readyMutation.isPending,
+    round,
+    showBalance,
+    showCommands,
+    socketStatus,
+    verification: verificationQuery.data,
+    wallet: walletQuery.data,
+    onAmountChange: setAmountCents,
+    onAutoBetEnabledChange: setAutoBetEnabled,
+    onAutoBetStopLossChange: setAutoBetStopLoss,
+    onAutoBetStrategyChange: setAutoBetStrategy,
+    onAutoCashoutEnabledChange: setAutoCashoutEnabled,
+    onAutoCashoutTargetChange: setAutoCashoutTarget,
+    onBet,
+    onCloseCommands: () => setShowCommands(false),
+    onOpenCommands: () => setShowCommands(true),
+    onReady: () => readyMutation.mutate(),
+    onToggleBalance: toggleBalanceVisibility,
+  };
 }

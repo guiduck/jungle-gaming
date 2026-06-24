@@ -3,7 +3,7 @@ import {
   phaseDialogue,
   type PlayerBetDialogueState,
   tutorialDialogues,
-} from "../game-dialogues";
+} from "../constants/game-dialogues";
 import { useDialogueStore } from "../stores/dialogue-store";
 import type { Round } from "../types";
 

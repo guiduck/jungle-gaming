@@ -1,14 +1,17 @@
 import { shortPlayerId } from "../../services/read-model-display";
 import type { LeaderboardResponse } from "../../types";
-import { cashoutTriggerLabel, cents, multiplier } from "./panel-formatters";
+import { cashoutTriggerLabel, cents, multiplier } from "../../utils/formatters";
 
 export function LeaderboardPanel({ leaderboard }: { leaderboard?: LeaderboardResponse }) {
+  const leaderboardItems = leaderboard?.items ?? [];
+  const hasLeaderboardItems = leaderboardItems.length > 0;
+
   return (
     <section className="panel bets leaderboard-panel" data-smoke="leaderboard-panel">
       <h2>Ranking</h2>
-      {leaderboard?.items.length ? (
+      {hasLeaderboardItems && (
         <ul>
-          {leaderboard.items.map((entry) => (
+          {leaderboardItems.map((entry) => (
             <li key={`${entry.roundId}:${entry.betId}`}>
               <span>#{entry.rank} {shortPlayerId(entry.playerId)}</span>
               <strong>{cents(entry.payoutCents)}</strong>
@@ -17,9 +20,8 @@ export function LeaderboardPanel({ leaderboard }: { leaderboard?: LeaderboardRes
             </li>
           ))}
         </ul>
-      ) : (
-        <p>Nenhum saque vencedor ainda.</p>
       )}
+      {!hasLeaderboardItems && <p>Nenhum saque vencedor ainda.</p>}
     </section>
   );
 }
